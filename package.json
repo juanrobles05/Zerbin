@@ -19,5 +19,9 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
+  },
+  "dependencies": {
+    "expo-av": "^15.1.7",
+    "expo-camera": "^16.1.11"
   }
 }
