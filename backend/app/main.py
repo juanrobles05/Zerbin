@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -28,8 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Servir archivos estáticos (imágenes)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+#app.mount("/uploads", StaticFiles(directory=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads"))), name="uploads")
 
 # Incluir rutas de la API
 app.include_router(api_router, prefix="/api/v1")

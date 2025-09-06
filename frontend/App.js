@@ -8,7 +8,7 @@ import { StyleSheet, View } from 'react-native';
 // Importar pantallas
 import { CameraScreen } from './src/screens/camera/CameraScreen';
 import { HomeScreen } from './src/screens/home/HomeScreen';
-import { ReportsScreen } from './src/screens/Reports/ReportsScreen';
+import { ReportsScreen } from './src/screens/reports/ReportsScreen';
 
 // Importar tema
 import { THEME } from './src/styles/theme';

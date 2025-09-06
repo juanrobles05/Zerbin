@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
-import { Camera } from 'expo-camera';
+import { Camera, useCameraPermissions } from 'expo-camera';
 
 export const useCamera = () => {
-  const [permission, requestPermission] = Camera.useCameraPermissions();
+  const [permission, requestPermission] = useCameraPermissions();
   const [isLoading, setIsLoading] = useState(false);
 
   const requestCameraPermission = async () => {
