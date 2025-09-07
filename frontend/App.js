@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
 
 // Importar pantallas
+import { WelcomeScreen } from './src/screens/home/WelcomeScreen';
 import { CameraScreen } from './src/screens/camera/CameraScreen';
 import { HomeScreen } from './src/screens/home/HomeScreen';
 import { ReportsScreen } from './src/screens/reports/ReportsScreen';
@@ -21,7 +22,7 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="light" backgroundColor={THEME.colors.primary} />
         <Stack.Navigator
-          initialRouteName="Home"
+          initialRouteName="Welcome" 
           screenOptions={{
             headerStyle: {
               backgroundColor: THEME.colors.primary,
@@ -34,6 +35,13 @@ export default function App() {
             headerBackTitleVisible: false,
           }}
         >
+          <Stack.Screen
+            name="Welcome"
+            component={WelcomeScreen}
+            options={{
+              headerShown: false, // <-- Oculta el encabezado en la pantalla de bienvenida
+            }}
+          />
           <Stack.Screen
             name="Home"
             component={HomeScreen}

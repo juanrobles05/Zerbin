@@ -1,228 +1,248 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../../styles/theme';
-import { Button } from '../../components/common/Button';
+import { FontAwesome5, MaterialIcons, Feather } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 
-export const HomeScreen = ({ navigation }) => {
-  const navigateToCamera = () => {
-    navigation.navigate('Camera');
-  };
+// Componente para los botones principales
+const MainButton = ({ iconName, text, subtext, onPress }) => (
+  <TouchableOpacity style={styles.mainButton} onPress={onPress}>
+    <View style={styles.mainButtonIcon}>
+      <FontAwesome5 name={iconName} size={40} color={THEME.colors.white} />
+    </View>
+    <Text style={styles.mainButtonText}>{text}</Text>
+    <Text style={styles.mainButtonSubtext}>{subtext}</Text>
+  </TouchableOpacity>
+);
 
-  const navigateToReports = () => {
-    navigation.navigate('Reports');
-  };
+// Componente para el resumen de actividad
+const ActivitySummary = ({ reports, resolved, pending }) => (
+  <View style={styles.card}>
+    <Text style={styles.cardTitle}>Resumen de Actividad</Text>
+    <View style={styles.summaryContainer}>
+      <View style={styles.summaryItem}>
+        <Text style={[styles.summaryNumber, { color: THEME.colors.primary }]}>{reports}</Text>
+        <Text style={styles.summaryLabel}>Reportes</Text>
+      </View>
+      <View style={styles.summaryItem}>
+        <Text style={[styles.summaryNumber, { color: THEME.colors.success }]}>{resolved}</Text>
+        <Text style={styles.summaryLabel}>Resueltos</Text>
+      </View>
+      <View style={styles.summaryItem}>
+        <Text style={[styles.summaryNumber, { color: THEME.colors.danger }]}>{pending}</Text>
+        <Text style={styles.summaryLabel}>Pendientes</Text>
+      </View>
+    </View>
+  </View>
+);
 
+// Componente para un reporte reciente
+const RecentReport = ({ status }) => (
+  <View style={styles.reportItem}>
+    <View style={styles.reportIcon} />
+    <View style={styles.reportInfo}>
+      <Text style={styles.reportTitle}>Basura urbana</Text>
+      <Text style={styles.reportLocation}>Cra 80 #45-3</Text>
+    </View>
+    <View style={[styles.statusTag, { backgroundColor: THEME.colors[status.toLowerCase()] }]}>
+      <Text style={styles.statusText}>{status}</Text>
+    </View>
+  </View>
+);
+
+// Componente principal de la pantalla
+export function HomeScreen({ navigation }) {
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header Section */}
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
+      <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.welcomeText}>¡Bienvenido a Zerbin!</Text>
-          <Text style={styles.subtitleText}>
-            Ayuda a mantener limpia nuestra ciudad
-          </Text>
+          <Text style={styles.greeting}>¡Hola! ¿Qué quieres reportar hoy?</Text>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+              <FontAwesome5 name="sign-out-alt" size={24} color={THEME.colors.textPrimary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+              <FontAwesome5 name="user-circle" size={24} color={THEME.colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Main Action Card */}
-        <View style={styles.mainCard}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="camera" size={64} color={THEME.colors.primary} />
-          </View>
-          <Text style={styles.cardTitle}>Reportar Residuo</Text>
-          <Text style={styles.cardDescription}>
-            Toma una foto del residuo mal dispuesto y ayúdanos a identificarlo 
-            para una recolección rápida y eficiente.
-          </Text>
-          <Button
-            title="Abrir Cámara"
-            onPress={navigateToCamera}
-            style={styles.mainButton}
+        <View style={styles.mainButtonsContainer}>
+          <MainButton
+            iconName="camera"
+            text="REPORTAR"
+            subtext="Toma una foto"
+            onPress={() => navigation.navigate('Camera')}
+          />
+          <MainButton
+            iconName="list-alt"
+            text="HISTORIAL"
+            subtext="Mis reportes"
+            onPress={() => navigation.navigate('Reports')}
           />
         </View>
+        
+        <ActivitySummary reports={12} resolved={8} pending={4} />
 
-        {/* Stats Section */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="leaf-outline" size={32} color={THEME.colors.success} />
-            <Text style={styles.statNumber}>1,247</Text>
-            <Text style={styles.statLabel}>Reportes este mes</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Acceso Rápido</Text>
+          <View>
+            <TouchableOpacity style={styles.quickAccessItem}>
+              <Feather name="bar-chart-2" size={20} color={THEME.colors.textPrimary} style={styles.quickAccessIcon} />
+              <Text style={styles.quickAccessText}>Estadísticas de la ciudad</Text>
+              <MaterialIcons name="keyboard-arrow-right" size={24} color={THEME.colors.textPrimary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickAccessItem}>
+              <Feather name="phone-call" size={20} color={THEME.colors.textPrimary} style={styles.quickAccessIcon} />
+              <Text style={styles.quickAccessText}>Contactar empresa</Text>
+              <MaterialIcons name="keyboard-arrow-right" size={24} color={THEME.colors.textPrimary} />
+            </TouchableOpacity>
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="people-outline" size={32} color={THEME.colors.primary} />
-            <Text style={styles.statNumber}>856</Text>
-            <Text style={styles.statLabel}>Ciudadanos activos</Text>
-          </View>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.actionButton} onPress={navigateToReports}>
-            <Ionicons name="list-outline" size={24} color={THEME.colors.primary} />
-            <Text style={styles.actionText}>Mis Reportes</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="map-outline" size={24} color={THEME.colors.primary} />
-            <Text style={styles.actionText}>Ver Mapa</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="information-circle-outline" size={24} color={THEME.colors.primary} />
-            <Text style={styles.actionText}>Acerca de</Text>
-          </TouchableOpacity>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Reportes recientes</Text>
+          <RecentReport status="Pendiente" />
+          <RecentReport status="Pendiente" />
         </View>
 
-        {/* Impact Section */}
-        <View style={styles.impactCard}>
-          <Text style={styles.impactTitle}>Tu Impacto</Text>
-          <Text style={styles.impactDescription}>
-            Cada reporte cuenta. Juntos hemos evitado que{' '}
-            <Text style={styles.highlightText}>29,000 toneladas</Text> de residuos 
-            lleguen al relleno sanitario La Pradera este año.
-          </Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  scrollContent: {
-    padding: THEME.spacing.md,
+  container: {
+    padding: 20,
+    backgroundColor: THEME.colors.background,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: THEME.spacing.xl,
+    marginBottom: 20,
   },
-  welcomeText: {
-    fontSize: THEME.fontSize.xlarge,
+  greeting: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: THEME.colors.primary,
-    textAlign: 'center',
-    marginBottom: THEME.spacing.sm,
+    color: THEME.colors.textPrimary,
   },
-  subtitleText: {
-    fontSize: THEME.fontSize.medium,
-    color: THEME.colors.gray.dark,
-    textAlign: 'center',
+  headerIcons: {
+    flexDirection: 'row',
+    width: 60,
+    justifyContent: 'space-between',
   },
-  mainCard: {
-    backgroundColor: THEME.colors.white,
-    borderRadius: THEME.borderRadius.lg,
-    padding: THEME.spacing.xl,
-    alignItems: 'center',
-    marginBottom: THEME.spacing.lg,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  iconContainer: {
-    marginBottom: THEME.spacing.md,
-  },
-  cardTitle: {
-    fontSize: THEME.fontSize.large,
-    fontWeight: '600',
-    color: THEME.colors.black,
-    marginBottom: THEME.spacing.sm,
-  },
-  cardDescription: {
-    fontSize: THEME.fontSize.medium,
-    color: THEME.colors.gray.dark,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: THEME.spacing.lg,
+  mainButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
   mainButton: {
-    minWidth: 200,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: THEME.spacing.lg,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: THEME.colors.white,
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.md,
+    backgroundColor: THEME.colors.primary,
+    borderRadius: 15,
+    width: '48%',
+    padding: 20,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: THEME.spacing.sm,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
-  statNumber: {
-    fontSize: THEME.fontSize.large,
+  mainButtonIcon: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 50,
+    padding: 15,
+    marginBottom: 10,
+  },
+  mainButtonText: {
+    color: THEME.colors.white,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: THEME.colors.black,
-    marginTop: THEME.spacing.sm,
   },
-  statLabel: {
-    fontSize: THEME.fontSize.small,
-    color: THEME.colors.gray.dark,
-    textAlign: 'center',
-    marginTop: THEME.spacing.xs,
+  mainButtonSubtext: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
   },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: THEME.spacing.lg,
+  card: {
+    backgroundColor: THEME.colors.card,
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
   },
-  actionButton: {
-    flex: 1,
-    backgroundColor: THEME.colors.white,
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.md,
-    alignItems: 'center',
-    marginHorizontal: THEME.spacing.xs,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  actionText: {
-    fontSize: THEME.fontSize.small,
-    color: THEME.colors.gray.dark,
-    marginTop: THEME.spacing.sm,
-    textAlign: 'center',
-  },
-  impactCard: {
-    backgroundColor: THEME.colors.primaryLight,
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.lg,
-    alignItems: 'center',
-  },
-  impactTitle: {
-    fontSize: THEME.fontSize.large,
-    fontWeight: '600',
-    color: THEME.colors.primary,
-    marginBottom: THEME.spacing.sm,
-  },
-  impactDescription: {
-    fontSize: THEME.fontSize.medium,
-    color: THEME.colors.gray.dark,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  highlightText: {
+  cardTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
-    color: THEME.colors.primary,
+    color: THEME.colors.textPrimary,
+    marginBottom: 15,
+  },
+  summaryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  summaryItem: {
+    alignItems: 'center',
+  },
+  summaryNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+  },
+  quickAccessItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.divider,
+  },
+  quickAccessIcon: {
+    marginRight: 10,
+  },
+  quickAccessText: {
+    fontSize: 16,
+    flex: 1,
+    color: THEME.colors.textPrimary,
+  },
+  reportItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.divider,
+  },
+  reportIcon: {
+    width: 50,
+    height: 50,
+    backgroundColor: THEME.colors.textSecondary,
+    borderRadius: 10,
+    marginRight: 15,
+  },
+  reportInfo: {
+    flex: 1,
+  },
+  reportTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: THEME.colors.textPrimary,
+  },
+  reportLocation: {
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+  },
+  statusTag: {
+    borderRadius: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  statusText: {
+    color: THEME.colors.white,
+    fontWeight: 'bold',
+    fontSize: 12,
   },
 });

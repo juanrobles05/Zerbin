@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import reports
+from app.api.v1.endpoints import reports, upload
 
 # Crea un router principal para la versión 1 de la API.
 api_router = APIRouter()
@@ -7,3 +7,4 @@ api_router = APIRouter()
 # Incluye los routers de los diferentes endpoints.
 # Por ejemplo, el router para los reportes de residuos.
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+api_router.include_router(upload.router, tags=["upload"])
