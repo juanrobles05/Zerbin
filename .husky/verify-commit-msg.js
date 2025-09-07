@@ -12,6 +12,11 @@ if (!msgPath || !fs.existsSync(msgPath)) {
 const fullMsg = fs.readFileSync(msgPath, 'utf-8').trim();
 const firstLine = fullMsg.split('\n')[0]; // 💡 Solo la primera línea
 
+// 👉 Nueva regla: permitir merges
+if (firstLine.startsWith('Merge')) {
+  process.exit(0); // ✅ Merge permitido, salimos sin error
+}
+
 const commitRE = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\([^\)]+\))?: .+$/;
 
 if (!commitRE.test(firstLine)) {
