@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
+  TouchableOpacity, // Importa TouchableOpacity para el botón
   Alert
 } from 'react-native';
 import { CameraView } from 'expo-camera';
@@ -13,6 +14,7 @@ import { CameraControls } from '../../components/camera/CameraControls';
 import { CameraPreview } from '../../components/camera/CameraPreview';
 import { reportService } from '../../services/api/reportService';
 import { THEME } from '../../styles/theme';
+import { FontAwesome5 } from '@expo/vector-icons'; // Importa el ícono de la cámara
 
 export const CameraScreen = ({ navigation }) => {
   const [showCamera, setShowCamera] = useState(false);
@@ -94,8 +96,14 @@ export const CameraScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Contenido de la pantalla inicial */}
-      {/* Aquí irá tu interfaz principal */}
+      <View style={styles.contentContainer}>
+        <Text style={styles.mainText}>¿Listo para reportar un residuo?</Text>
+        <Text style={styles.subText}>Presiona el botón para abrir la cámara y tomar una foto.</Text>
+        <TouchableOpacity style={styles.cameraButton} onPress={handleCameraPress}>
+          <FontAwesome5 name="camera" size={30} color={THEME.colors.white} />
+          <Text style={styles.cameraButtonText}>Abrir Cámara</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -104,6 +112,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.colors.background
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  mainText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: THEME.colors.textPrimary,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  subText: {
+    fontSize: 16,
+    color: THEME.colors.textSecondary,
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  cameraButton: {
+    backgroundColor: THEME.colors.primary,
+    borderRadius: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+  },
+  cameraButtonText: {
+    color: THEME.colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
   cameraContainer: {
     flex: 1

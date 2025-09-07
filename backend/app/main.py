@@ -29,7 +29,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-#app.mount("/uploads", StaticFiles(directory=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads"))), name="uploads")
+# Crear directorio de uploads si no existe
+uploads_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads"))
+os.makedirs(uploads_dir, exist_ok=True)
+os.makedirs(os.path.join(uploads_dir, "images"), exist_ok=True)
+os.makedirs(os.path.join(uploads_dir, "temp"), exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # Incluir rutas de la API
 app.include_router(api_router, prefix="/api/v1")

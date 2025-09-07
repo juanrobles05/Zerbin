@@ -22,7 +22,7 @@ class Settings:
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:8080",
-        "exp://127.0.0.1:8081",  # Para Expo Dev
+        "exp://127.0.0.1:8081",  # esta direccion cambia
     ]
     
     # Archivos

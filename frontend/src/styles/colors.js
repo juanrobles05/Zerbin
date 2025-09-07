@@ -1,17 +1,15 @@
 export const COLORS = {
-  primary: '#4CAF50',
-  primaryDark: '#388E3C',
-  primaryLight: '#C8E6C9',
-  secondary: '#FF5722',
-  background: '#F5F5F5',
+  primary: '#2E8B57', // Un verde oscuro que se usa para botones y el logo
+  primaryLight: '#3CB371', // Un verde más claro para elementos activos
+  secondary: '#FF8C00', // Un naranja para estados de advertencia o acento
+  background: '#3A4750', // Un gris oscuro para el fondo de las pantallas
+  card: '#4E5B66', // Un gris un poco más claro para las tarjetas y contenedores
   white: '#FFFFFF',
   black: '#000000',
-  gray: {
-    light: '#F5F5F5',
-    medium: '#9E9E9E',
-    dark: '#424242'
-  },
-  success: '#4CAF50',
-  error: '#F44336',
-  warning: '#FF9800'
+  textPrimary: '#FFFFFF', // Blanco para texto principal
+  textSecondary: '#B0BEC5', // Gris claro para texto secundario
+  success: '#32CD32', // Un verde brillante para éxito
+  error: '#FF6347', // Un rojo para errores o pendientes
+  warning: '#FFD700', // Un amarillo para advertencias
+  divider: '#607D8B', // Un gris azulado para separadores
 };
