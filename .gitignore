@@ -5,3 +5,4 @@ venv/
 *.pyc
 backend/.env
 backend/venv/
+.vscode/
