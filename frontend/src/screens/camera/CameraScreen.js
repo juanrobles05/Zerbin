@@ -1,13 +1,5 @@
-import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator
-} from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { CameraView } from 'expo-camera';
 import { useCamera } from '../../hooks/useCamera';
 import { useLocation } from '../../hooks/useLocation';
@@ -22,28 +14,45 @@ export const CameraScreen = ({ navigation }) => {
   const [capturedImage, setCapturedImage] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [photoLocation, setPhotoLocation] = useState(null);
+  const [showCoords, setShowCoords] = useState(false);
   const cameraRef = useRef(null);
+  const hideTimer = useRef(null);
 
   const { requestCameraPermission, takePicture, isLoading } = useCamera();
-  const { getCurrentLocation, requestLocationPermission, isLoading: isLocationLoading } = useLocation();
+  const {
+    location,
+    isLoading: isLocationLoading,
+    requestLocationPermission,
+    getCurrentLocation,
+    startWatchingLocation,
+    stopWatchingLocation
+  } = useLocation();
+
+  useEffect(() => {
+    return () => {
+      stopWatchingLocation();
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, []);
 
   const handleCameraPress = async () => {
     const hasCamera = await requestCameraPermission();
     const hasLocation = await requestLocationPermission();
-    if (hasCamera && hasLocation) {
+    if (hasCamera) {
       setShowCamera(true);
-    } else if (hasCamera) {
-      setShowCamera(true);
+      if (hasLocation) startWatchingLocation();
     }
   };
 
   const handleTakePicture = async () => {
     const photo = await takePicture(cameraRef);
     if (photo) {
-      const loc = await getCurrentLocation();
+      let loc = location;
+      if (!loc) loc = await getCurrentLocation();
       setPhotoLocation(loc);
       setCapturedImage(photo);
       setShowCamera(false);
+      stopWatchingLocation();
       setShowPreview(true);
     }
   };
@@ -52,16 +61,10 @@ export const CameraScreen = ({ navigation }) => {
     if (!capturedImage) return;
     try {
       let locationToSend = photoLocation;
-      if (!locationToSend) {
-        locationToSend = await getCurrentLocation();
-      }
+      if (!locationToSend) locationToSend = await getCurrentLocation();
       await reportService.uploadImage(capturedImage.uri, locationToSend);
-      Alert.alert(
-        '¡Éxito!',
-        'La foto ha sido enviada exitosamente',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    } catch (error) {
+      Alert.alert('¡Éxito!', 'La foto ha sido enviada exitosamente', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+    } catch {
       Alert.alert('Error', 'No se pudo enviar el reporte');
     }
   };
@@ -71,34 +74,35 @@ export const CameraScreen = ({ navigation }) => {
     setPhotoLocation(null);
     setShowPreview(false);
     setShowCamera(true);
+    startWatchingLocation();
+  };
+
+  const handleToggleCoords = () => {
+    setShowCoords(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setShowCoords(false), 2000);
   };
 
   if (showPreview && capturedImage) {
     const coords = photoLocation?.coords;
     return (
       <View style={{ flex: 1 }}>
-        <CameraPreview
-          imageUri={capturedImage.uri}
-          onConfirm={handleConfirmPhoto}
-          onRetake={handleRetake}
-          isLoading={isLoading}
-        />
-        <View style={styles.locationOverlay}>
-          {isLocationLoading ? (
-            <View style={styles.locationBadge}>
-              <ActivityIndicator size="small" color={THEME.colors.white} />
-              <Text style={styles.locationText}>Obteniendo ubicación...</Text>
-            </View>
-          ) : (
-            <View style={styles.locationBadge}>
-              <FontAwesome5 name="map-marker-alt" size={14} color={THEME.colors.white} />
-              <Text style={styles.locationText}>
-                {coords
-                  ? `Lat ${coords.latitude.toFixed(6)}, Lon ${coords.longitude.toFixed(6)}`
-                  : 'Ubicación no disponible'}
-              </Text>
+        <CameraPreview imageUri={capturedImage.uri} onConfirm={handleConfirmPhoto} onRetake={handleRetake} isLoading={isLoading} />
+        <View style={styles.fabContainer}>
+          {showCoords && (
+            <View style={styles.coordsBadge}>
+              {isLocationLoading ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <Text style={styles.coordsText}>
+                  {coords ? `Lat ${coords.latitude.toFixed(6)}, Lon ${coords.longitude.toFixed(6)}` : 'Ubicación no disponible'}
+                </Text>
+              )}
             </View>
           )}
+          <TouchableOpacity style={styles.fab} onPress={handleToggleCoords}>
+            <FontAwesome5 name="map-marker-alt" size={18} color={THEME.colors.white} />
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -107,16 +111,8 @@ export const CameraScreen = ({ navigation }) => {
   if (showCamera) {
     return (
       <View style={styles.cameraContainer}>
-        <CameraView
-          style={styles.camera}
-          ref={cameraRef}
-          facing="back"
-        >
-          <CameraControls
-            onCapture={handleTakePicture}
-            onClose={() => setShowCamera(false)}
-            isLoading={isLoading}
-          />
+        <CameraView style={styles.camera} ref={cameraRef} facing="back">
+          <CameraControls onCapture={handleTakePicture} onClose={() => { setShowCamera(false); stopWatchingLocation(); }} isLoading={isLoading} />
         </CameraView>
       </View>
     );
@@ -137,68 +133,16 @@ export const CameraScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: THEME.colors.background
-  },
-  contentContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20
-  },
-  mainText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: THEME.colors.textPrimary,
-    marginBottom: 10,
-    textAlign: 'center'
-  },
-  subText: {
-    fontSize: 16,
-    color: THEME.colors.textSecondary,
-    marginBottom: 30,
-    textAlign: 'center'
-  },
-  cameraButton: {
-    backgroundColor: THEME.colors.primary,
-    borderRadius: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 30
-  },
-  cameraButtonText: {
-    color: THEME.colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 10
-  },
-  cameraContainer: {
-    flex: 1
-  },
-  camera: {
-    flex: 1
-  },
-  locationOverlay: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center'
-  },
-  locationBadge: {
-    backgroundColor: THEME.colors.backdrop ?? 'rgba(0,0,0,0.6)',
-    borderRadius: 24,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  locationText: {
-    color: THEME.colors.white,
-    fontSize: 14,
-    marginLeft: 6
-  }
+  container: { flex: 1, backgroundColor: THEME.colors.background },
+  contentContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  mainText: { fontSize: 24, fontWeight: 'bold', color: THEME.colors.textPrimary, marginBottom: 10, textAlign: 'center' },
+  subText: { fontSize: 16, color: THEME.colors.textSecondary, marginBottom: 30, textAlign: 'center' },
+  cameraButton: { backgroundColor: THEME.colors.primary, borderRadius: 50, flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 30 },
+  cameraButtonText: { color: THEME.colors.white, fontSize: 18, fontWeight: 'bold', marginLeft: 10 },
+  cameraContainer: { flex: 1 },
+  camera: { flex: 1 },
+  fabContainer: { position: 'absolute', right: 16, bottom: 20, alignItems: 'flex-end' },
+  fab: { width: 44, height: 44, borderRadius: 22, backgroundColor: THEME.colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 4 , marginTop: 6 },
+  coordsBadge: { marginBottom: 6, backgroundColor: THEME.colors.backdrop ?? 'rgba(0,0,0,0.75)', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12, maxWidth: 280 },
+  coordsText: { color: THEME.colors.white, fontSize: 14 }
 });

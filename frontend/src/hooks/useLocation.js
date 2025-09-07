@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import * as Location from 'expo-location';
 
 export const useLocation = () => {
   const [location, setLocation] = useState(null);
   const [permission, setPermission] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const watcherRef = useRef(null);
 
   const requestLocationPermission = async () => {
     setIsLoading(true);
@@ -26,7 +27,7 @@ export const useLocation = () => {
     }
     setIsLoading(true);
     try {
-      const currentLocation = await Location.getCurrentPositionAsync({});
+      const currentLocation = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setLocation(currentLocation);
       return currentLocation;
     } catch {
@@ -36,11 +37,33 @@ export const useLocation = () => {
     }
   };
 
+  const startWatchingLocation = async () => {
+    if (!permission) {
+      const ok = await requestLocationPermission();
+      if (!ok) return null;
+    }
+    if (watcherRef.current) return watcherRef.current;
+    watcherRef.current = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.Balanced, timeInterval: 3000, distanceInterval: 3 },
+      l => setLocation(l)
+    );
+    return watcherRef.current;
+  };
+
+  const stopWatchingLocation = () => {
+    if (watcherRef.current) {
+      watcherRef.current.remove();
+      watcherRef.current = null;
+    }
+  };
+
   return {
     location,
     permission,
     isLoading,
     requestLocationPermission,
-    getCurrentLocation
+    getCurrentLocation,
+    startWatchingLocation,
+    stopWatchingLocation
   };
 };
