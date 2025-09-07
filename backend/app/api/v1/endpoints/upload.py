@@ -9,6 +9,7 @@ from app.services.image_service import ImageService
 from app.services.ai_service import AIService
 
 router = APIRouter()
+ai_service = AIService()
 
 @router.post("/upload-image", response_model=ReportResponse)
 async def upload_image(
@@ -29,7 +30,8 @@ async def upload_image(
     image_url = await ImageService.save_image(image)
     
     # Clasificar con IA
-    ai_result = await AIService.classify_waste(image_url)
+    contents = await image.read()
+    ai_result = await AIService.classify_waste(contents)
     
     # Crear reporte
     report_data = ReportCreate(
@@ -46,3 +48,9 @@ async def upload_image(
     )
     
     return report
+
+@router.post("/classify")
+async def classify_waste(image: UploadFile = File(...)):
+    contents = await image.read()
+    result = await ai_service.classify_waste(contents)
+    return result

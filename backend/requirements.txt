@@ -41,3 +41,5 @@ torch
 torchvision
 pillow
 opencv-python
+transformers
+python-decouple
