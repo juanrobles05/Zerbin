@@ -4,8 +4,9 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  TouchableOpacity, // Importa TouchableOpacity para el botón
-  Alert
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { CameraView } from 'expo-camera';
 import { useCamera } from '../../hooks/useCamera';
@@ -14,20 +15,24 @@ import { CameraControls } from '../../components/camera/CameraControls';
 import { CameraPreview } from '../../components/camera/CameraPreview';
 import { reportService } from '../../services/api/reportService';
 import { THEME } from '../../styles/theme';
-import { FontAwesome5 } from '@expo/vector-icons'; // Importa el ícono de la cámara
+import { FontAwesome5 } from '@expo/vector-icons';
 
 export const CameraScreen = ({ navigation }) => {
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [photoLocation, setPhotoLocation] = useState(null);
   const cameraRef = useRef(null);
 
   const { requestCameraPermission, takePicture, isLoading } = useCamera();
-  const { getCurrentLocation } = useLocation();
+  const { getCurrentLocation, requestLocationPermission, isLoading: isLocationLoading } = useLocation();
 
   const handleCameraPress = async () => {
-    const hasPermission = await requestCameraPermission();
-    if (hasPermission) {
+    const hasCamera = await requestCameraPermission();
+    const hasLocation = await requestLocationPermission();
+    if (hasCamera && hasLocation) {
+      setShowCamera(true);
+    } else if (hasCamera) {
       setShowCamera(true);
     }
   };
@@ -35,6 +40,8 @@ export const CameraScreen = ({ navigation }) => {
   const handleTakePicture = async () => {
     const photo = await takePicture(cameraRef);
     if (photo) {
+      const loc = await getCurrentLocation();
+      setPhotoLocation(loc);
       setCapturedImage(photo);
       setShowCamera(false);
       setShowPreview(true);
@@ -43,36 +50,57 @@ export const CameraScreen = ({ navigation }) => {
 
   const handleConfirmPhoto = async () => {
     if (!capturedImage) return;
-
     try {
-      const location = await getCurrentLocation();
-      
-      await reportService.uploadImage(capturedImage.uri, location);
-      
+      let locationToSend = photoLocation;
+      if (!locationToSend) {
+        locationToSend = await getCurrentLocation();
+      }
+      await reportService.uploadImage(capturedImage.uri, locationToSend);
       Alert.alert(
-        "¡Éxito!",
-        "La foto ha sido enviada exitosamente",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
+        '¡Éxito!',
+        'La foto ha sido enviada exitosamente',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      Alert.alert("Error", "No se pudo enviar el reporte");
+      Alert.alert('Error', 'No se pudo enviar el reporte');
     }
   };
 
   const handleRetake = () => {
     setCapturedImage(null);
+    setPhotoLocation(null);
     setShowPreview(false);
     setShowCamera(true);
   };
 
   if (showPreview && capturedImage) {
+    const coords = photoLocation?.coords;
     return (
-      <CameraPreview
-        imageUri={capturedImage.uri}
-        onConfirm={handleConfirmPhoto}
-        onRetake={handleRetake}
-        isLoading={isLoading}
-      />
+      <View style={{ flex: 1 }}>
+        <CameraPreview
+          imageUri={capturedImage.uri}
+          onConfirm={handleConfirmPhoto}
+          onRetake={handleRetake}
+          isLoading={isLoading}
+        />
+        <View style={styles.locationOverlay}>
+          {isLocationLoading ? (
+            <View style={styles.locationBadge}>
+              <ActivityIndicator size="small" color={THEME.colors.white} />
+              <Text style={styles.locationText}>Obteniendo ubicación...</Text>
+            </View>
+          ) : (
+            <View style={styles.locationBadge}>
+              <FontAwesome5 name="map-marker-alt" size={14} color={THEME.colors.white} />
+              <Text style={styles.locationText}>
+                {coords
+                  ? `Lat ${coords.latitude.toFixed(6)}, Lon ${coords.longitude.toFixed(6)}`
+                  : 'Ubicación no disponible'}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
     );
   }
 
@@ -117,20 +145,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 20
   },
   mainText: {
     fontSize: 24,
     fontWeight: 'bold',
     color: THEME.colors.textPrimary,
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   subText: {
     fontSize: 16,
     color: THEME.colors.textSecondary,
     marginBottom: 30,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   cameraButton: {
     backgroundColor: THEME.colors.primary,
@@ -138,18 +166,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 15,
-    paddingHorizontal: 30,
+    paddingHorizontal: 30
   },
   cameraButtonText: {
     color: THEME.colors.white,
     fontSize: 18,
     fontWeight: 'bold',
-    marginLeft: 10,
+    marginLeft: 10
   },
   cameraContainer: {
     flex: 1
   },
   camera: {
     flex: 1
+  },
+  locationOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center'
+  },
+  locationBadge: {
+    backgroundColor: THEME.colors.backdrop ?? 'rgba(0,0,0,0.6)',
+    borderRadius: 24,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  locationText: {
+    color: THEME.colors.white,
+    fontSize: 14,
+    marginLeft: 6
   }
 });
