@@ -1,8 +1,28 @@
-from app.models.waste_classification import WasteClassifier
+from transformers import pipeline
+from PIL import Image
+import io
 
 class AIService:
     def __init__(self):
-        self.classifier = WasteClassifier()
+        # Carga el modelo de HuggingFace solo una vez
+        self.classifier = pipeline("image-classification", model="prithivMLmods/Trash-Net")
 
-    async def classify_waste(self, image_data):
-        return self.classifier.classify(image_data)
+    def classify_waste(self, image_data: bytes):
+        """
+        Clasifica una imagen de residuo y devuelve tipo y confianza.
+        :param image_data: bytes de la imagen subida
+        :return: dict con {type, confidence}
+        """
+        try:
+            img = Image.open(io.BytesIO(image_data))
+        except Exception as e:
+            raise ValueError("Imagen inválida o corrupta") from e
+
+        # Ejecutar clasificación
+        results = self.classifier(img)
+        top_result = results[0]  # El de mayor confianza
+
+        return {
+            "type": top_result['label'],
+            "confidence": round(top_result['score'] * 100, 2)  # en porcentaje
+        }

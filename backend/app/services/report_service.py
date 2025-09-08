@@ -1,23 +1,31 @@
-# app/services/report_service.py
+from app.models.report import Report
 
-# Si el servicio necesita interactuar con la base de datos,
-# podrías tener una dependencia de sesión.
-# from sqlalchemy.orm import Session
+# Dummy implementation of get_address_from_coords
+def get_address_from_coords(latitude, longitude):
+    # Replace this with actual logic to get address from coordinates
+    return f"Address for ({latitude}, {longitude})"
 
-# Definición de la clase ReportService
 class ReportService:
-    # Esto es solo un esqueleto, deberías llenarlo con la lógica
-    # para crear, leer, actualizar y eliminar reportes de la base de datos.
     def __init__(self):
         pass
 
-    def create_report(self):
-        # Lógica para crear un reporte
-        pass
-    
-    # ... otros métodos para los servicios de reportes
+    @staticmethod
+    def create_report(db, report_data, image_url, ai_classification):
+        # Crear instancia del modelo Report
+        report = Report(
+            latitude=report_data.latitude,
+            longitude=report_data.longitude,
+            description=report_data.description,
+            image_url=image_url,
+            address=get_address_from_coords(report_data.latitude, report_data.longitude),  # Si tienes una función para esto
+            waste_type=ai_classification.get("type"),
+            confidence_score=ai_classification.get("confidence"),
+            status="pending"
+        )
+        db.add(report)
+        db.commit()
+        db.refresh(report)
+        # Retornar el objeto, FastAPI lo serializa usando ReportResponse
+        return report
 
-# Si tu servicio utiliza dependencias, podrías tener una función
-# para obtener la instancia del servicio con esas dependencias.
-# def get_report_service(db: Session = Depends(get_db)):
-#     return ReportService(db)
+# Debes definir o importar la función get_address_from_coords si quieres calcular la dirección.
