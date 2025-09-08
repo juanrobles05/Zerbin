@@ -9,16 +9,43 @@ const apiClient = axios.create({
   }
 });
 
-export const reportService = {
-  uploadImage: async (imageUri, location) => {
+export const classify = {
+  image: async (imageUri) => {
     try {
       const formData = new FormData();
       formData.append('image', {
         uri: imageUri,
+        name: 'waste.jpg',
         type: 'image/jpeg',
+      });
+      const response = await apiClient.post(
+        API_CONFIG.ENDPOINTS.CLASSIFY_IMAGE,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error classifying image:', error);
+      throw error;
+    }
+  }
+};
+
+export const reportService = {
+  uploadImage: async (imageUri, location) => {
+    try {
+      console.log('Uploading image...');
+      const formData = new FormData();
+      formData.append('image', {
+        uri: imageUri,
+        type: 'image/jpg',
         name: `waste-report-${Date.now()}.jpg`
       });
-      
+
       if (location) {
         formData.append('latitude', location.coords.latitude.toString());
         formData.append('longitude', location.coords.longitude.toString());
