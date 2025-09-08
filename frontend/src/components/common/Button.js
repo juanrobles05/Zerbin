@@ -2,13 +2,13 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { THEME } from '../../styles/theme';
 
-export const Button = ({ 
-  title, 
-  onPress, 
-  variant = 'primary', 
+export const Button = ({
+  title,
+  onPress,
+  variant = 'primary',
   disabled = false,
   style,
-  ...props 
+  ...props
 }) => {
   return (
     <TouchableOpacity
