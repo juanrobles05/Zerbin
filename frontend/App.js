@@ -1,15 +1,15 @@
-import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 // Importar pantallas
 import { WelcomeScreen } from './src/screens/home/WelcomeScreen';
 import { CameraScreen } from './src/screens/camera/CameraScreen';
 import { HomeScreen } from './src/screens/home/HomeScreen';
-import { ReportsScreen } from './src/screens/reports/ReportsScreen';
+import { HistoryScreen } from './src/screens/history/HistoryScreen';
+import { ReportScreen } from './src/screens/reports/ReportScreen';
 
 // Importar tema
 import { THEME } from './src/styles/theme';
@@ -22,7 +22,7 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="light" backgroundColor={THEME.colors.primary} />
         <Stack.Navigator
-          initialRouteName="Welcome" 
+          initialRouteName="Welcome"
           screenOptions={{
             headerStyle: {
               backgroundColor: THEME.colors.primary,
@@ -63,8 +63,15 @@ export default function App() {
             }}
           />
           <Stack.Screen
-            name="Reports"
-            component={ReportsScreen}
+            name="Report"
+            component={ReportScreen}
+            options={{
+              title: 'Nuevo Reporte',
+            }}
+          />
+          <Stack.Screen
+            name="History"
+            component={HistoryScreen}
             options={{
               title: 'Mis Reportes',
             }}
