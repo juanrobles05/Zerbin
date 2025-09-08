@@ -7,15 +7,16 @@ class ReportBase(BaseModel):
     longitude: float = Field(..., ge=-180, le=180, description="Longitud del reporte")
     description: Optional[str] = Field(None, max_length=500)
     manual_classification: Optional[str] = None
+    address: str = Field(..., max_length=255, description="Dirección del reporte")
 
 class ReportCreate(ReportBase):
-    pass
+    image_url: str = Field(..., description="URL de la imagen del reporte")
 
 class ReportUpdate(BaseModel):
     description: Optional[str] = None
     manual_classification: Optional[str] = None
     status: Optional[str] = None
-    
+
     @validator('status')
     def validate_status(cls, v):
         allowed_statuses = ['pending', 'in_progress', 'resolved']
@@ -34,7 +35,7 @@ class ReportResponse(ReportBase):
     created_at: datetime
     updated_at: Optional[datetime]
     resolved_at: Optional[datetime]
-    
+
     class Config:
         from_attributes = True
 
