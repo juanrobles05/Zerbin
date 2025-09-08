@@ -1,20 +1,25 @@
-import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../../styles/theme';
 import { FontAwesome5, MaterialIcons, Feather } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Componente para los botones principales
 const MainButton = ({ iconName, text, subtext, onPress }) => (
-  <TouchableOpacity style={styles.mainButton} onPress={onPress}>
-    <View style={styles.mainButtonIcon}>
-      <FontAwesome5 name={iconName} size={40} color={THEME.colors.white} />
-    </View>
-    <Text style={styles.mainButtonText}>{text}</Text>
-    <Text style={styles.mainButtonSubtext}>{subtext}</Text>
+  <TouchableOpacity style={styles.mainButtonContainer} onPress={onPress}>
+    <LinearGradient
+      colors={["#10b981", "#059669", "#047857"]}
+      style={styles.mainButton}
+    >
+      <View style={styles.mainButtonIcon}>
+        <FontAwesome5 name={iconName} size={40} color={THEME.colors.white} />
+      </View>
+      <Text style={styles.mainButtonText}>{text}</Text>
+      <Text style={styles.mainButtonSubtext}>{subtext}</Text>
+    </LinearGradient>
   </TouchableOpacity>
-);
+)
 
 // Componente para el resumen de actividad
 const ActivitySummary = ({ reports, resolved, pending }) => (
@@ -80,10 +85,10 @@ export function HomeScreen({ navigation }) {
             iconName="list-alt"
             text="HISTORIAL"
             subtext="Mis reportes"
-            onPress={() => navigation.navigate('Reports')}
+            onPress={() => navigation.navigate('History')}
           />
         </View>
-        
+
         <ActivitySummary reports={12} resolved={8} pending={4} />
 
         <View style={styles.card}>
@@ -120,6 +125,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 20,
+    marginTop: -30,
     backgroundColor: THEME.colors.background,
   },
   header: {
@@ -127,6 +133,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 5,
   },
   greeting: {
     fontSize: 20,
@@ -139,14 +147,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   mainButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 20,
+  },
+  mainButtonContainer: {
+    width: "48%",
+    borderRadius: 15,
+    overflow: "hidden",
   },
   mainButton: {
     backgroundColor: THEME.colors.primary,
     borderRadius: 15,
-    width: '48%',
     padding: 20,
     justifyContent: 'center',
     alignItems: 'center',
@@ -176,7 +188,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: THEME.colors.textPrimary,
-    marginBottom: 15,
+    marginBottom: 10,
   },
   summaryContainer: {
     flexDirection: 'row',
