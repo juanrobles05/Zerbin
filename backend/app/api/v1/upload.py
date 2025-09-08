@@ -12,45 +12,56 @@ router = APIRouter()
 ai_service = AIService()
 
 @router.post("/upload-image", response_model=ReportResponse)
-async def upload_image(
+def upload_image(
     image: UploadFile = File(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
     description: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
+
+    contents = image.file.read()
+    img_service = ImageService()
+
     """
     Endpoint para subir imagen y crear reporte de residuo
     """
     # Validar imagen
-    if not ImageService.validate_image(image):
-        raise HTTPException(status_code=400, detail="Formato de imagen no válido")
-    
-    # Guardar imagen
-    image_url = await ImageService.save_image(image)
-    
+    try:
+        img_service.validate_image(contents)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Guardar imagen (devuelve URL o path)
+    image_url = img_service.save_image(contents)
+
     # Clasificar con IA
-    contents = await image.read()
-    ai_result = await AIService.classify_waste(contents)
-    
+    ai_result = ai_service.classify_waste(contents)
+
     # Crear reporte
     report_data = ReportCreate(
         latitude=latitude,
         longitude=longitude,
-        description=description
+        description=description,
+        image_url=image_url,
+        address ="Carrera 22"
     )
-    
-    report = await ReportService.create_report(
+
+    report = ReportService.create_report(
         db=db,
         report_data=report_data,
         image_url=image_url,
         ai_classification=ai_result
     )
-    
+
     return report
 
+
 @router.post("/classify")
-async def classify_waste(image: UploadFile = File(...)):
-    contents = await image.read()
-    result = await ai_service.classify_waste(contents)
+def classify_waste(image: UploadFile = File(...)):
+    """
+    Solo clasifica la imagen sin crear reporte
+    """
+    contents = image.file.read()
+    result = ai_service.classify_waste(contents)
     return result

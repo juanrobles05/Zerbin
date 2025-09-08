@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import reports, upload
+from app.api.v1 import reports, upload
 
 # Crea un router principal para la versión 1 de la API.
 api_router = APIRouter()
