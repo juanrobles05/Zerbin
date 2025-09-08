@@ -5,11 +5,11 @@ import { useCamera } from '../../hooks/useCamera';
 import { useLocation } from '../../hooks/useLocation';
 import { CameraControls } from '../../components/camera/CameraControls';
 import { CameraPreview } from '../../components/camera/CameraPreview';
-import { reportService } from '../../services/api/reportService';
 import { THEME } from '../../styles/theme';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
-export const CameraScreen = ({ navigation }) => {
+export const CameraScreen = ({ navigation, route }) => {
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -62,8 +62,7 @@ export const CameraScreen = ({ navigation }) => {
     try {
       let locationToSend = photoLocation;
       if (!locationToSend) locationToSend = await getCurrentLocation();
-      await reportService.uploadImage(capturedImage.uri, locationToSend);
-      Alert.alert('¡Éxito!', 'La foto ha sido enviada exitosamente', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      navigation.navigate('Report', { image: capturedImage.uri, location: locationToSend });
     } catch {
       Alert.alert('Error', 'No se pudo enviar el reporte');
     }
@@ -87,23 +86,23 @@ export const CameraScreen = ({ navigation }) => {
     const coords = photoLocation?.coords;
     return (
       <View style={{ flex: 1 }}>
-        <CameraPreview imageUri={capturedImage.uri} onConfirm={handleConfirmPhoto} onRetake={handleRetake} isLoading={isLoading} />
-        <View style={styles.fabContainer}>
-          {showCoords && (
-            <View style={styles.coordsBadge}>
-              {isLocationLoading ? (
-                <ActivityIndicator size="small" />
-              ) : (
-                <Text style={styles.coordsText}>
-                  {coords ? `Lat ${coords.latitude.toFixed(6)}, Lon ${coords.longitude.toFixed(6)}` : 'Ubicación no disponible'}
-                </Text>
-              )}
-            </View>
-          )}
-          <TouchableOpacity style={styles.fab} onPress={handleToggleCoords}>
-            <FontAwesome5 name="map-marker-alt" size={18} color={THEME.colors.white} />
-          </TouchableOpacity>
-        </View>
+        <CameraPreview
+          imageUri={capturedImage.uri}
+          onConfirm={handleConfirmPhoto}
+          onRetake={handleRetake}
+          onShowCoords={handleToggleCoords}
+        />
+        {showCoords && (
+          <View style={[styles.coordsBadge, { position: 'absolute', bottom: 120, alignSelf: 'center', zIndex: 10 }]}> 
+            {isLocationLoading ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <Text style={styles.coordsText}>
+                {coords ? `Lat ${coords.latitude.toFixed(6)}, Lon ${coords.longitude.toFixed(6)}` : 'Ubicación no disponible'}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
     );
   }
@@ -123,9 +122,17 @@ export const CameraScreen = ({ navigation }) => {
       <View style={styles.contentContainer}>
         <Text style={styles.mainText}>¿Listo para reportar un residuo?</Text>
         <Text style={styles.subText}>Presiona el botón para abrir la cámara y tomar una foto.</Text>
-        <TouchableOpacity style={styles.cameraButton} onPress={handleCameraPress}>
-          <FontAwesome5 name="camera" size={30} color={THEME.colors.white} />
-          <Text style={styles.cameraButtonText}>Abrir Cámara</Text>
+
+        <TouchableOpacity style={styles.cameraButtonContainer} onPress={handleCameraPress}>
+          <LinearGradient
+            colors={["#10b981", "#059669", "#047857"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cameraButton}
+          >
+            <FontAwesome5 name="camera" size={30} color={THEME.colors.white} />
+            <Text style={styles.cameraButtonText}>Abrir Cámara</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

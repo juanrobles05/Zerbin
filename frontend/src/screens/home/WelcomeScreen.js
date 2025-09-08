@@ -1,8 +1,9 @@
-import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../../styles/theme';
 import { FontAwesome5, MaterialIcons, Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import LEAFIcon from '../../../assets/leaf-icon.svg';
 
 const ICON_SIZE = 30;
 const ICON_COLOR = THEME.colors.primary;
@@ -28,9 +29,12 @@ export function WelcomeScreen({ navigation }) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <FontAwesome5 name="leaf" size={60} color={THEME.colors.white} />
-          </View>
+            <LinearGradient
+              colors={[THEME.colors.primary, '#2eccb8']}
+              style={styles.logoContainer}
+            >
+              <LEAFIcon viewBox="25 30 300 50" width="220" height="50" />
+            </LinearGradient>
           <Text style={styles.title}>ZERBIN</Text>
           <Text style={styles.subtitle}>Tu ciudad más limpia</Text>
         </View>
@@ -75,11 +79,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     justifyContent: 'space-between',
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   logoContainer: {
     backgroundColor: THEME.colors.primary,
@@ -88,7 +92,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   title: {
-    fontSize: 48,
+    fontSize: 60,
     fontWeight: 'bold',
     color: THEME.colors.textPrimary,
   },
@@ -102,7 +106,7 @@ const styles = StyleSheet.create({
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 25,
   },
   iconContainer: {
     marginRight: 20,
