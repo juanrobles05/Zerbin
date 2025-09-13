@@ -66,7 +66,7 @@ export default function App() {
             name="Report"
             component={ReportScreen}
             options={{
-              title: 'Nuevo Reporte',
+              title: 'Crear Reporte',
             }}
           />
           <Stack.Screen
