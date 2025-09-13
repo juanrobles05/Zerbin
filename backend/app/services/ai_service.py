@@ -14,7 +14,7 @@ class AIService:
         :return: dict con {type, confidence}
         """
         try:
-            img = Image.open(io.BytesIO(image_data))
+            img = Image.open(io.BytesIO(image_data)).convert("RGB")
         except Exception as e:
             raise ValueError("Imagen inválida o corrupta") from e
 
