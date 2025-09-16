@@ -2,16 +2,55 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, SafeAreaView, Image, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { THEME } from '../../styles/theme';
 import { reportService, classify } from '../../services/api/reportService';
 
+const getAddressFromCoords = async (lat, lon) => {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: { "User-Agent": "my-app" }, // Nominatim lo exige
+    });
+    const data = await response.json();
+
+    function clean(str) {
+      return str ? String(str).trim() : "";
+    }
+
+    const city = clean(data.address?.city).replace("Perímetro Urbano", "");
+    const neighborhood = clean(data.address?.neighbourhood);
+    const road = clean(data.address?.road);
+    const houseNumber = data.address?.house_number ? `#${clean(data.address.house_number)}` : "";
+
+    const direccion = [road, houseNumber, neighborhood, city]
+      .filter(Boolean)
+      .join(", ")
+      || "Dirección no encontrada";
+
+    return direccion;
+  } catch (error) {
+    console.error("Error obteniendo dirección:", error);
+    return null;
+  }
+};
+
 export function ReportScreen({ navigation, route }) {
+
   const imageUri = route?.params?.image;
   const location = route?.params?.location;
   const [classification, setClassification] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [description, setDescription] = useState('');
+  const [address, setAddress] = useState('');
 
   useEffect(() => {
+    if (location) {
+      getAddressFromCoords(location.coords.latitude, location.coords.longitude).then((direccion) =>
+          setAddress(direccion)
+        );
+    } else {
+      setAddress("Ubicación no disponible");
+    }
     if (imageUri) {
       classifyImage(imageUri);
     }
@@ -21,7 +60,7 @@ export function ReportScreen({ navigation, route }) {
     setLoading(true);
     try {
       const data = await classify.image(uri);
-      setClassification(data);
+      setClassification(data.classification);
     } catch (error) {
       console.error('Error clasificando:', error);
       alert('Error al clasificar la imagen');
@@ -31,65 +70,93 @@ export function ReportScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerSubtitle}>Completa los detalles del residuo</Text>
+      </View>
+      {reportLoading && (
+        <Text style={styles.textLoader}>Enviando reporte...</Text>
+      )}
+
+      {/* Image Preview */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerSubtitle}>Completa los detalles del residuo</Text>
+        <View style={styles.imageSection}>
+          <View style={styles.imageContainer}>
+            {imageUri ? (
+              <Image
+                source={{ uri: imageUri }}
+                style={styles.previewImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.placeholderImage}>
+                <FontAwesome5 name="image" size={60} color="#A3A3A3" />
+                <Text style={{ color: '#A3A3A3', marginTop: 8 }}>Sin imagen</Text>
+              </View>
+            )}
+            {imageUri && (
+              <View style={styles.successBadge}>
+                <FontAwesome5 name="check-circle" size={16} color="#10B981" />
+                <Text style={styles.successText}>Imagen capturada exitosamente</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Image Preview */}
-        <View style={styles.imageContainer}>
-          {imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.previewImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.placeholderImage}>
-              <FontAwesome5 name="image" size={60} color="#A3A3A3" />
-              <Text style={{ color: '#A3A3A3', marginTop: 8 }}>Sin imagen</Text>
-            </View>
-          )}
-          {imageUri && (
-            <View style={styles.successBadge}>
-              <FontAwesome5 name="check-circle" size={16} color="#10B981" />
-              <Text style={styles.successText}>Imagen capturada exitosamente</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Ubicación */}
-        {location && location.coords && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.sectionTitle}>Ubicación detectada</Text>
-            <Text>Latitud: {location.coords.latitude}</Text>
-            <Text>Longitud: {location.coords.longitude}</Text>
-          </View>
-        )}
-
-        {/* Clasificación */}
-        {loading && <Text style={styles.text}>Cargando clasificación...</Text>}
-        {classification && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.sectionTitle}>Clasificación</Text>
+      {/* Clasificación */}
+      {loading && <Text style={styles.textLoader}>Cargando clasificación...</Text>}
+      {classification && (
+        <>
+          <Text style={styles.sectionTitle}>Clasificación</Text>
+          <View style={styles.classificationContainer}>
             <Text>Tipo de residuo: {classification.type}</Text>
-            <Text>Confianza: {classification.confianza}%</Text>
+            <Text>Confianza: {classification.confidence}%</Text>
           </View>
-        )}
-      </ScrollView>
+        </>
+      )}
+
+      {/* Ubicación */}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>Ubicación detectada</Text>
+        <View style={styles.locationContainer}>
+          <View style={styles.locationInfo}>
+            <FontAwesome5 name="map-marker-alt" size={16} color="#10B981" />
+            <Text style={styles.locationText}>{address}</Text>
+          </View>
+          <TouchableOpacity style={styles.changeButton}>
+            <Text style={styles.changeButtonText}>Cambiar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Descripción */}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>Descripción (opcional)</Text>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Agrega una descripción..."
+          placeholderTextColor="#9CA3AF"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+        />
+      </View>
+    </ScrollView>
 
       {/* Submit Button */}
       <View style={styles.submitContainer}>
         <TouchableOpacity
           onPress={async () => {
-            setLoading(true);
+            setReportLoading(true);
             try {
-              await reportService.uploadImage(imageUri, location);
+              if (!location) {
+                alert('Falta ubicación');
+                setReportLoading(false);
+                return;
+              }
+              await reportService.uploadImage(imageUri, location, description);
               alert('Reporte enviado exitosamente');
-              navigation.goBack();
+              navigation.navigate('Home');
             } catch (error) {
               alert('Error al enviar el reporte');
             }
@@ -115,20 +182,20 @@ export function ReportScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#374151",
-  },
-  scrollView: {
-    flex: 1,
+    backgroundColor: "#4B5563",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: "#374151",
+    backgroundColor: "#4B5563",
+    borderBottomWidth: 1,
+    borderBottomColor: "#6B7280",
   },
   backButton: {
     marginRight: 16,
+    padding: 4,
   },
   headerTextContainer: {
     flex: 1,
@@ -143,22 +210,35 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     marginTop: 2,
   },
+  scrollView: {
+    flex: 1,
+  },
+  imageSection: {
+    padding: 8,
+  },
   imageContainer: {
-    margin: 20,
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: "hidden",
-    backgroundColor: "#4B5563",
+    backgroundColor: "#6B7280",
+    borderWidth: 1.5,
+    borderColor: "#9CA3AF",
+    margin: 10,
   },
   previewImage: {
     width: "100%",
     height: 200,
     resizeMode: "cover",
   },
+  placeholderImage: {
+    height: 200,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   successBadge: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 4,
     backgroundColor: "rgba(16, 185, 129, 0.1)",
   },
   successText: {
@@ -167,26 +247,36 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontWeight: "500",
   },
-  detailsContainer: {
-    backgroundColor: "#4B5563",
-    margin: 20,
-    borderRadius: 12,
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    marginBottom: 20,
-  },
+  // detailsSection: {
+  //   backgroundColor: "#6B7280",
+  //   margin: 20,
+  //   marginTop: 0,
+  //   borderRadius: 12,
+  //   padding: 20,
+  //   borderWidth: 1,
+  //   borderColor: "#9CA3AF",
+  // },
+  // detailsTitle: {
+  //   fontSize: 18,
+  //   fontWeight: "bold",
+  //   color: "#FFFFFF",
+  //   marginBottom: 20,
+  // },
   fieldContainer: {
-    marginBottom: 20,
+    marginBottom: 10,
   },
   fieldLabel: {
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
     marginBottom: 12,
+    marginHorizontal: 20,
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    backgroundColor: "#4B5563",
+    borderRadius: 8,
+    padding: 4,
   },
   toggleContainer: {
     flexDirection: "row",
@@ -218,7 +308,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     backgroundColor: "#374151",
     borderRadius: 8,
-    padding: 16,
+    padding: 10,
+    marginHorizontal: 20,
   },
   locationInfo: {
     flexDirection: "row",
@@ -248,6 +339,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlignVertical: "top",
     minHeight: 80,
+    marginHorizontal: 20,
+  },
+  textLoader: {
+    color: "#10B981",           // Verde destacado
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginVertical: 16,
+    backgroundColor: "rgba(16,185,129,0.08)", // Fondo suave verde
+    padding: 10,
+    borderRadius: 8,
+    letterSpacing: 0.5,
+    marginHorizontal: 20,
   },
   priorityContainer: {
     flexDirection: "row",
@@ -282,9 +386,39 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginLeft: 6,
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    marginBottom: 12,
+    marginHorizontal: 20,
+  },
+  classificationContainer: {
+    backgroundColor: "#374151", // verde suave con transparencia
+    borderRadius: 10,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
   submitContainer: {
     padding: 20,
     backgroundColor: "#374151",
+  },
+  submitButtonContainer: {
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  submitContainer: {
+    padding: 20,
+    backgroundColor: "#4B5563",
   },
   submitButtonContainer: {
     borderRadius: 12,

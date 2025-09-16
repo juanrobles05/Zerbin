@@ -10,16 +10,16 @@ class ReportService:
         pass
 
     @staticmethod
-    def create_report(db, report_data, image_url, ai_classification):
+    def create_report(db, report_data):
         # Crear instancia del modelo Report
         report = Report(
             latitude=report_data.latitude,
             longitude=report_data.longitude,
             description=report_data.description,
-            image_url=image_url,
+            image_url=report_data.image_url,
             address=get_address_from_coords(report_data.latitude, report_data.longitude),  # Si tienes una función para esto
-            waste_type=ai_classification.get("type"),
-            confidence_score=ai_classification.get("confidence"),
+            waste_type=report_data.ai_classification.get("type"),
+            confidence_score=report_data.ai_classification.get("confidence"),
             status="pending"
         )
         db.add(report)

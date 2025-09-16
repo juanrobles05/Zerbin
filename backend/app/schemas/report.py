@@ -7,10 +7,11 @@ class ReportBase(BaseModel):
     longitude: float = Field(..., ge=-180, le=180, description="Longitud del reporte")
     description: Optional[str] = Field(None, max_length=500)
     manual_classification: Optional[str] = None
-    address: str = Field(..., max_length=255, description="Dirección del reporte")
+    address: Optional[str] = Field(None, max_length=255, description="Dirección del reporte")
 
 class ReportCreate(ReportBase):
     image_url: str = Field(..., description="URL de la imagen del reporte")
+    ai_classification: dict = Field(..., description="Clasificación automática proporcionada por el servicio de IA")
 
 class ReportUpdate(BaseModel):
     description: Optional[str] = None
