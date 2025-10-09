@@ -1,43 +1,17 @@
-import io
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from sqlalchemy.orm import Session
-from typing import Optional
-from pydantic import BaseModel
-import requests
-from io import BytesIO
-
-from app.core.database import get_db
-from app.schemas.report import ReportCreate, ReportResponse
-from app.services.report_service import ReportService
-from app.services.image_service import ImageService
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from app.services.ai_service import AIService
 
 router = APIRouter()
 ai_service = AIService()
 
-class ClassifyRequest(BaseModel):
-    image_url: str
-
-@router.post("/upload-image", response_model=ReportResponse)
-def upload_image(
-    report: ReportCreate,
-    db: Session = Depends(get_db)
+@router.post("/classify/")
+async def classify_waste_from_file(
+    image: UploadFile = File(...)
 ):
-    created_report = ReportService.create_report(
-        db=db,
-        report_data=report
-    )
-    return created_report
-
-@router.post("/classify")
-def classify_waste_from_url(request: ClassifyRequest):
-    """ Clasifica la imagen desde una URL (Firebase Storage) """
+    """Clasifica el residuo a partir de una imagen subida"""
     try:
-        # Descargar imagen desde Firebase
-        response = requests.get(request.image_url)
-        response.raise_for_status()
-        # Clasificar usando tu servicio AI
-        result = ai_service.classify_waste(response.content)
+        file_bytes = await image.read()
+        result = ai_service.classify_waste(file_bytes)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error clasificando imagen: {str(e)}")

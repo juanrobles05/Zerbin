@@ -60,7 +60,7 @@ export function ReportScreen({ navigation, route }) {
     setLoading(true);
     try {
       const data = await classify.image(uri);
-      setClassification(data.classification);
+      setClassification(data);
     } catch (error) {
       console.error('Error clasificando:', error);
       alert('Error al clasificar la imagen');
@@ -149,18 +149,19 @@ export function ReportScreen({ navigation, route }) {
           onPress={async () => {
             setReportLoading(true);
             try {
-              if (!location) {
+              if (!location || !location.coords) {
                 alert('Falta ubicación');
-                setReportLoading(false);
                 return;
               }
-              await reportService.uploadImage(imageUri, location, description);
+              await reportService.createReport(imageUri, location, description, classification);
               alert('Reporte enviado exitosamente');
               navigation.navigate('Home');
             } catch (error) {
+              console.error('Error al enviar el reporte:', error);
               alert('Error al enviar el reporte');
+            } finally {
+              setReportLoading(false);
             }
-            setLoading(false);
           }}
           style={styles.submitButtonContainer}
         >

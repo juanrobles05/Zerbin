@@ -13,9 +13,8 @@ const getApiUrl = () => {
 export const API_CONFIG = {
     BASE_URL: getApiUrl(),
     ENDPOINTS: {
-        REPORTS: '/v1/reports',
-        UPLOAD_IMAGE: '/v1/upload-image',
-        CLASSIFY_IMAGE: '/v1/classify'
+        REPORTS: '/v1/reports/',
+        CLASSIFY_IMAGE: '/v1/classify/'
     }
 };
 

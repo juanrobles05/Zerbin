@@ -17,11 +17,7 @@ class Settings(BaseSettings):
         "ACCESS_TOKEN_EXPIRE_MINUTES", default=60 * 24, cast=int
     )
 
-    ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "exp://127.0.0.1:8081",
-    ]
+    ALLOWED_ORIGINS: List[str] = ["*"]
 
     UPLOAD_DIR: str = config("UPLOAD_DIR", default="uploads")
     MAX_FILE_SIZE: int = config("MAX_FILE_SIZE", default=10 * 1024 * 1024, cast=int)  # 10MB
@@ -34,5 +30,6 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()

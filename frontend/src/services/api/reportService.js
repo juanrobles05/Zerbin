@@ -1,55 +1,37 @@
 import axios from 'axios';
 import { API_CONFIG } from '../../utils/constants';
-import firebaseApp from '../../../firebaseConfig';
-import { ref, uploadBytes, getDownloadURL, getStorage } from "firebase/storage";
-
-const storage = getStorage(firebaseApp);
 
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  timeout: 20000,
 });
 
-export const uploadImageToFirebase = async (imageUri) => {
-  try {
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
-
-    const storageRef = ref(storage, `images/${Date.now()}.jpg`);
-    await uploadBytes(storageRef, blob);
-
-    const downloadURL = await getDownloadURL(storageRef);
-
-    return downloadURL;
-  } catch (error) {
-    console.error('Error uploading image to Firebase:', error);
-    throw error;
-  }
+// Helper to build a file object compatible with React Native FormData
+const buildFile = (imageUri, name = `photo_${Date.now()}.jpg`, type = 'image/jpeg') => {
+  return {
+    uri: imageUri,
+    name,
+    type,
+  };
 };
 
 export const classify = {
   image: async (imageUri) => {
     try {
-
-      const downloadURL = await uploadImageToFirebase(imageUri);
+      const formData = new FormData();
+      formData.append('image', buildFile(imageUri));
 
       const response = await apiClient.post(
         API_CONFIG.ENDPOINTS.CLASSIFY_IMAGE,
-        { image_url: downloadURL }, // payload con la URL de Firebase
+        formData,
         {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'multipart/form-data'
           }
         }
       );
 
-      return {
-        downloadURL,
-        classification: response.data
-      }
+      return response.data;
     } catch (error) {
       console.error('Error classifying image:', error);
       throw error;
@@ -58,48 +40,34 @@ export const classify = {
 };
 
 export const reportService = {
-  uploadImage: async (imageUri, location, description) => {
+  // Create report by sending image file + fields as multipart/form-data
+  createReport: async (imageUri, location, description, classification) => {
     try {
+      const formData = new FormData();
+      formData.append('image', buildFile(imageUri));
+      formData.append('latitude', String(location?.coords?.latitude ?? ''));
+      formData.append('longitude', String(location?.coords?.longitude ?? ''));
 
-      const { downloadURL, classification } = await classify.image(imageUri);
+      if (classification) {
+        formData.append('ai_classification', JSON.stringify(classification));
+      }
 
-      const payload = {
-        image_url: downloadURL,
-        latitude: location?.coords.latitude || null,
-        longitude: location?.coords.longitude || null,
-        description: description || null,
-        manual_classification: null,
-        address: null,
-        ai_classification: classification || null
-      };
+      if (description) formData.append('description', description);
 
       const response = await apiClient.post(
-        API_CONFIG.ENDPOINTS.UPLOAD_IMAGE,
-        payload,
+        API_CONFIG.ENDPOINTS.REPORTS,
+        formData,
         {
           headers: {
-            'Content-Type': 'application/json',
-          },
+            'Content-Type': 'multipart/form-data'
+          }
         }
       );
 
       return response.data;
     } catch (error) {
-      console.error('Error uploading image:', error);
-      throw error;
-    }
-  },
-
-  createReport: async (reportData) => {
-    try {
-      const response = await apiClient.post(
-        API_CONFIG.ENDPOINTS.REPORTS,
-        reportData
-      );
-      return response.data;
-    } catch (error) {
       console.error('Error creating report:', error);
       throw error;
     }
-  }
+  },
 };
