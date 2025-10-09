@@ -1,21 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, Image, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, SafeAreaView, Image, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { THEME } from '../../styles/theme';
 import { reportService, classify } from '../../services/api/reportService';
+import { useLocation } from '../../hooks/useLocation';
 
 export function ReportScreen({ navigation, route }) {
   const imageUri = route?.params?.image;
-  const location = route?.params?.location;
+  const initialLocation = route?.params?.location;
   const [classification, setClassification] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [locationAddress, setLocationAddress] = useState('');
+  
+  const { 
+    manualLocation, 
+    setManualSelectedLocation, 
+    getActiveLocation 
+  } = useLocation();
 
   useEffect(() => {
     if (imageUri) {
       classifyImage(imageUri);
     }
   }, [imageUri]);
+
+  useEffect(() => {
+    // If there's an initial location from camera but no manual location selected, use it
+    if (initialLocation && !manualLocation) {
+      // Set the initial location as manual to ensure it's available for the report
+      setManualSelectedLocation(initialLocation);
+    }
+  }, [initialLocation, manualLocation]);
+
+  useEffect(() => {
+    // Update address when location changes
+    const activeLocation = getActiveLocation();
+    if (activeLocation) {
+      getAddressFromLocation(activeLocation);
+    }
+  }, [manualLocation, initialLocation]);
 
   const classifyImage = async (uri) => {
     setLoading(true);
@@ -27,6 +52,53 @@ export function ReportScreen({ navigation, route }) {
       alert('Error al clasificar la imagen');
     }
     setLoading(false);
+  };
+
+  const getAddressFromLocation = async (location) => {
+    if (!location?.coords) return;
+    
+    try {
+      const result = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+
+      if (result.length > 0) {
+        const locationData = result[0];
+        const addressParts = [
+          locationData.street,
+          locationData.streetNumber,
+          locationData.district,
+          locationData.city,
+          locationData.region
+        ].filter(Boolean);
+        
+        setLocationAddress(addressParts.join(', ') || 'Dirección no disponible');
+      } else {
+        setLocationAddress('Dirección no disponible');
+      }
+    } catch (error) {
+      console.error('Error getting address:', error);
+      setLocationAddress('Error al obtener la dirección');
+    }
+  };
+
+  const handleSelectLocation = () => {
+    const currentLocation = getActiveLocation();
+    const defaultLocation = currentLocation?.coords || initialLocation?.coords || {
+      latitude: 4.7110, // Bogotá default
+      longitude: -74.0721
+    };
+
+    navigation.navigate('LocationSelector', {
+      initialLocation: defaultLocation,
+      title: "Ubicación del Residuo",
+      onLocationSelected: (selectedLocation) => {
+        setManualSelectedLocation(selectedLocation);
+        // Update address immediately when location is selected
+        getAddressFromLocation(selectedLocation);
+      }
+    });
   };
 
   return (
@@ -62,13 +134,53 @@ export function ReportScreen({ navigation, route }) {
         </View>
 
         {/* Ubicación */}
-        {location && location.coords && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.sectionTitle}>Ubicación detectada</Text>
-            <Text>Latitud: {location.coords.latitude}</Text>
-            <Text>Longitud: {location.coords.longitude}</Text>
+        <View style={styles.locationSection}>
+          <View style={styles.sectionHeaderCentered}>
+            <FontAwesome5 name="map-marker-alt" size={20} color={THEME.colors.primary} />
+            <Text style={styles.sectionTitleCentered}>Ubicación del Residuo</Text>
           </View>
-        )}
+          
+          {getActiveLocation()?.coords ? (
+            <View style={styles.locationContainer}>
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationLabel}>
+                  {manualLocation ? 'Ubicación seleccionada manualmente' : 'Ubicación detectada por GPS'}
+                </Text>
+                <Text style={styles.locationText}>
+                  {locationAddress || 'Obteniendo dirección...'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.changeLocationButton}
+                onPress={handleSelectLocation}
+              >
+                <FontAwesome5 name="edit" size={16} color={THEME.colors.primary} />
+                <Text style={styles.changeLocationText}>Cambiar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.noLocationContainer}>
+              <FontAwesome5 name="exclamation-triangle" size={24} color={THEME.colors.warning} />
+              <Text style={styles.noLocationText}>
+                No se detectó ubicación automáticamente
+              </Text>
+              <TouchableOpacity
+                style={styles.selectLocationButton}
+                onPress={handleSelectLocation}
+              >
+                <LinearGradient
+                  colors={[THEME.colors.primary, "#059669", "#047857"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.selectLocationGradient}
+                >
+                  <FontAwesome5 name="map" size={16} color={THEME.colors.white} />
+                  <Text style={styles.selectLocationButtonText}>Seleccionar en Mapa</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         {/* Clasificación */}
         {loading && <Text style={styles.text}>Cargando clasificación...</Text>}
@@ -85,9 +197,22 @@ export function ReportScreen({ navigation, route }) {
       <View style={styles.submitContainer}>
         <TouchableOpacity
           onPress={async () => {
+            const activeLocation = getActiveLocation();
+            if (!activeLocation?.coords) {
+              Alert.alert(
+                'Ubicación Requerida',
+                'Por favor selecciona la ubicación del residuo antes de enviar el reporte.',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Seleccionar Ubicación', onPress: handleSelectLocation }
+                ]
+              );
+              return;
+            }
+
             setLoading(true);
             try {
-              await reportService.uploadImage(imageUri, location);
+              await reportService.uploadImage(imageUri, activeLocation);
               alert('Reporte enviado exitosamente');
               navigation.goBack();
             } catch (error) {
@@ -307,5 +432,93 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginLeft: 12,
     letterSpacing: 0.5,
+  },
+  // New location styles
+  locationSection: {
+    backgroundColor: "#4B5563",
+    margin: 20,
+    borderRadius: 12,
+    padding: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionHeaderCentered: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  sectionTitleCentered: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginLeft: 8,
+    textAlign: 'center',
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#374151',
+    borderRadius: 8,
+    padding: 16,
+  },
+  locationInfo: {
+    flex: 1,
+  },
+  locationLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 4,
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontFamily: 'monospace',
+  },
+  changeLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  },
+  changeLocationText: {
+    color: THEME.colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  noLocationContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  noLocationText: {
+    fontSize: 16,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginVertical: 12,
+  },
+  selectLocationButton: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  selectLocationGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  selectLocationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
 })
