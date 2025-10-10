@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import Optional
-
+import json
 from app.core.database import get_db
-from app.schemas.report import ReportCreate, ReportResponse, ReportListResponse
+from app.schemas.report import ReportResponse, ReportListResponse, ReportBase
+from pydantic import ValidationError
 from app.services.report_service import ReportService
 from app.services.image_service import ImageService
 from app.services.ai_service import AIService
@@ -11,38 +12,63 @@ from app.services.ai_service import AIService
 router = APIRouter()
 
 @router.post("/", response_model=ReportResponse)
-def create_report(
+async def create_report(
     image: UploadFile = File(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
     description: Optional[str] = Form(None),
+    ai_classification: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    """Crear un nuevo reporte de residuo con imagen"""
-    if not ImageService.validate_image(image):
-        raise HTTPException(status_code=400, detail="Formato de imagen no válido")
+    """
+    Crear un nuevo reporte de residuo con imagen.
+    1. Sube la imagen a Supabase
+    2. Clasifica la imagen con IA
+    3. Guarda el reporte en la base de datos
+    """
+    file_bytes = await image.read()
+    image_filename = image.filename
 
-    image_url = ImageService.save_image(image)  # síncrono
-    ai_result = AIService.classify_waste(image_url)
+    # Validar que lat/long esten en el rango correcto
+    try:
+        ReportBase(latitude=latitude, longitude=longitude, description=description)
+    except ValidationError as e:
+        # Convertir errores de validación a respuesta HTTP 400
+        raise HTTPException(status_code=400, detail=e.errors())
 
-    report_data = ReportCreate(
-        latitude=latitude,
-        longitude=longitude,
-        description=description
+    # Subir imagen a Supabase
+    public_url = await ImageService().upload_to_supabase(
+        file_bytes=file_bytes,
+        original_filename=image_filename
     )
 
-    report = ReportService.create_report(
+    # Usar la clasificación realizada anteriormente si existe (evita recalcular)
+    if ai_classification is not None and str(ai_classification).strip() != "string":
+        try:
+            ai_result = json.loads(ai_classification)
+        except Exception:
+            raise HTTPException(status_code=400, detail="ai_classification debe ser un JSON válido")
+    else:
+        ai_result = AIService().classify_waste(file_bytes)
+
+    # Crear objeto de datos para el reporte
+    report_data = type('ReportData', (), {})()
+    report_data.latitude = latitude
+    report_data.longitude = longitude
+    report_data.description = description
+    report_data.image_url = public_url
+    report_data.ai_classification = ai_result
+
+    # Crear el reporte en la base de datos
+    created_report = await ReportService.create_report(
         db=db,
-        report_data=report_data,
-        image_url=image_url,
-        ai_classification=ai_result
+        report_data=report_data
     )
-
-    return report
+    return created_report
 
 
 @router.get("/", response_model=ReportListResponse)
-def get_reports(
+async def get_reports(
     skip: int = 0,
     limit: int = 50,
     status: Optional[str] = None,
@@ -53,7 +79,6 @@ def get_reports(
     reports, total = ReportService.get_reports(
         db=db, skip=skip, limit=limit, status=status, waste_type=waste_type
     )
-
     return ReportListResponse(
         reports=reports,
         total=total,
@@ -63,7 +88,7 @@ def get_reports(
 
 
 @router.get("/{report_id}", response_model=ReportResponse)
-def get_report(report_id: int, db: Session = Depends(get_db)):
+async def get_report(report_id: int, db: Session = Depends(get_db)):
     """Obtener un reporte específico por ID"""
     report = ReportService.get_report_by_id(db=db, report_id=report_id)
     if not report:
@@ -72,7 +97,7 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{report_id}/status", response_model=ReportResponse)
-def update_report_status(
+async def update_report_status(
     report_id: int,
     status: str,
     db: Session = Depends(get_db)
@@ -81,8 +106,6 @@ def update_report_status(
     updated_report = ReportService.update_report_status(
         db=db, report_id=report_id, status=status
     )
-
     if not updated_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
-
     return updated_report
