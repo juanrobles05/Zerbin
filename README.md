@@ -33,19 +33,9 @@ pip install -r requirements.txt
 ## Environment Configuration
 
 ### Backend Environment Variables
-Create a `.env` file in the `backend` directory for Neon database connection and other configurations.
+Create a `.env` file in the `backend` directory containing the environment variables the backend needs (for example: Supabase credentials, `DATABASE_URL`, `SUPABASE_URL`, and other configuration values).
 
 **The complete `.env` file with all required values will be provided separately to each developer.**
-
-### Frontend Environment Variables
-Create a `.env` file in the `frontend` directory for Firebase Storage configuration.
-
-**The complete `.env` file with Firebase credentials will be provided separately to each developer.**
-
-Required variables include:
-- Firebase project configuration
-- Storage bucket settings
-- Authentication keys
 
 **Important Notes:**
 - Never commit `.env` files to version control (they are already in `.gitignore`)
@@ -58,7 +48,6 @@ Required variables include:
 Before running the project, ensure you have:
 1. ✅ Obtained the `.env` files from the scrum master
 2. ✅ Placed the backend `.env` file in the `backend` directory
-3. ✅ Placed the frontend `.env` file in the `frontend` directory
 4. ✅ Installed all dependencies as described above
 
 ### Frontend (React Native)
@@ -96,9 +85,25 @@ npx cz
 **Frontend can't connect to backend:**
 - ✅ Make sure the backend is running on `http://0.0.0.0:8000`
 - ✅ Verify your device/emulator is on the same network as your development machine
-- ✅ Ensure you have the correct frontend `.env` file with Firebase configuration
+- ✅ Ensure your Wi‑Fi network is marked as a "Private" network on your development machine (Windows applies stricter firewall rules to "Public" networks):
+	- Check network profile in PowerShell:
+		```powershell
+		Get-NetConnectionProfile
+		```
+		- Mark the network as Private (use the appropriate InterfaceIndex or InterfaceAlias).
 
-**Firebase Storage issues:**
-- ✅ Verify you have the correct frontend `.env` file with Firebase credentials
-- ✅ Contact the project administrator if Firebase integration is not working
-- ✅ Ensure your `.env` file is placed in the correct `frontend` directory
+            **Warning:** Only change the network profile on networks you trust (for example, your home network). Do not mark public or untrusted networks as Private.
+
+            **Note:** The following PowerShell command requires Administrator privileges. Open PowerShell as Administrator before running it.
+			```powershell
+			Set-NetConnectionProfile -InterfaceIndex <YOUR_INDEX> -NetworkCategory Private
+			```
+- ✅ If you cannot change the network profile, you can temporarily allow incoming connections on port 8000 (Windows). Run PowerShell as Administrator and add a rule (remember to remove it after testing):
+	- Add temporary rule:
+		```powershell
+		New-NetFirewallRule -DisplayName "Zerbin dev allow 8000 from LAN" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow -RemoteAddress 192.168.1.0/24 -Profile Private
+		```
+	- Remove the rule after testing:
+		```powershell
+		Remove-NetFirewallRule -DisplayName "Zerbin dev allow 8000 from LAN"
+		```
