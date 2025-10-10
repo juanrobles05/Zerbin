@@ -47,7 +47,7 @@ class ReportService:
             report.status = status
             if status == "resolved":
                 from datetime import datetime
-                report.resolved_at = datetime.utcnow()
+                report.resolved_at = datetime.now()
             db.commit()
             db.refresh(report)
         return report

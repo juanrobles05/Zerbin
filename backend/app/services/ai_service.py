@@ -1,11 +1,12 @@
 from transformers import pipeline
 from PIL import Image
 import io
+from app.core.config import settings
 
 class AIService:
     def __init__(self):
         # Carga el modelo de HuggingFace solo una vez
-        self.classifier = pipeline("image-classification", model="prithivMLmods/Trash-Net")
+        self.classifier = pipeline("image-classification", model=settings.AI_MODEL_ID)
 
     def classify_waste(self, image_data: bytes):
         """

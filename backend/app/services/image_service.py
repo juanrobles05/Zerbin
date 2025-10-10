@@ -4,15 +4,16 @@ import uuid, time
 import tempfile
 import os
 from app.core.supabase_client import supabase
+from app.core.config import settings
 
 class ImageService:
     async def upload_to_supabase(
         self,
         file_bytes: bytes,
         original_filename: str,
-        bucket: str = "reports",
-        quality: int = 80,
-        max_size_mb: int = 5
+        bucket: str = settings.SUPABASE_BUCKET_NAME,
+        quality: int = settings.IMAGE_QUALITY,
+        max_size_mb: int = settings.IMAGE_MAX_SIZE_MB,
     ):
         """
         Valida, comprime y sube la imagen a Supabase Storage. Retorna la URL pública.
