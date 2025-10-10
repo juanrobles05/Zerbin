@@ -12,6 +12,7 @@ const getApiUrl = () => {
 
 export const API_CONFIG = {
     BASE_URL: getApiUrl(),
+    TIMEOUT: 120000, // 120s
     ENDPOINTS: {
         REPORTS: '/v1/reports/',
         CLASSIFY_IMAGE: '/v1/classify/'

@@ -3,7 +3,7 @@ import { API_CONFIG } from '../../utils/constants';
 
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
-  timeout: 20000,
+  timeout: API_CONFIG.TIMEOUT,
 });
 
 // Helper to build a file object compatible with React Native FormData
