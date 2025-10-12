@@ -11,6 +11,7 @@ import { HomeScreen } from './src/screens/home/HomeScreen';
 import { HistoryScreen } from './src/screens/history/HistoryScreen';
 import { ReportScreen } from './src/screens/reports/ReportScreen';
 
+
 // Importar tema
 import { THEME } from './src/styles/theme';
 
