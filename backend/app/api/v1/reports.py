@@ -109,3 +109,16 @@ async def update_report_status(
     if not updated_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     return updated_report
+
+
+@router.patch("/{report_id}/classification", response_model=ReportResponse)
+async def update_report_classification(
+    report_id: int,
+    corrected_type: str,
+    db: Session = Depends(get_db)
+):
+    """Permite al usuario corregir manualmente el tipo de residuo."""
+    updated = ReportService.update_report_classification(db=db, report_id=report_id, corrected_type=corrected_type)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    return updated

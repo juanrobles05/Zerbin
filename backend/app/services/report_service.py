@@ -51,3 +51,15 @@ class ReportService:
             db.commit()
             db.refresh(report)
         return report
+
+    def update_report_classification(db, report_id, corrected_type: str):
+        """Save a user-corrected classification for a report."""
+        report = db.query(Report).filter(Report.id == report_id).first()
+        if not report:
+            return None
+        report.manual_classification = corrected_type
+        # Optionally update the active waste_type so reads reflect corrected value
+        report.waste_type = corrected_type
+        db.commit()
+        db.refresh(report)
+        return report

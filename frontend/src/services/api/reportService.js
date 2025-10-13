@@ -70,4 +70,15 @@ export const reportService = {
       throw error;
     }
   },
+  updateReportClassification: async (reportId, correctedType) => {
+    try {
+      const response = await apiClient.patch(`${API_CONFIG.ENDPOINTS.REPORTS}${reportId}/classification`, {
+        corrected_type: correctedType
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating classification:', error);
+      throw error;
+    }
+  }
 };

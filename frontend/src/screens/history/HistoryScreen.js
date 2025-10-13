@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Image, StyleSheet } from 'react-native';
+import { View, Text, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import axios from 'axios';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { TouchableOpacity as RNTouchable } from 'react-native-gesture-handler';
+import WasteTypeSelector from '../../components/common/WasteTypeSelector';
+import { reportService } from '../../services/api/reportService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { THEME } from '../../styles/theme';
@@ -10,6 +12,9 @@ export function HistoryScreen({ navigation, route }) {
   const [imageUri, setImageUri] = useState(null);
   const [classification, setClassification] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectorVisible, setSelectorVisible] = useState(false);
+  const [currentReportId, setCurrentReportId] = useState(null);
+  const [suggestedType, setSuggestedType] = useState(null);
 
   useEffect(() => {
     if (route?.params?.imageUri) {
@@ -72,8 +77,26 @@ export function HistoryScreen({ navigation, route }) {
         <View style={styles.result}>
           <Text style={styles.text}>Tipo de residuo: {classification.type}</Text>
           <Text style={styles.text}>Confianza: {classification.confianza}%</Text>
+          <TouchableOpacity style={styles.fixButton} onPress={() => { setCurrentReportId(123); setSuggestedType(classification.type); setSelectorVisible(true); }}>
+            <Text style={styles.fixText}>Corregir clasificación</Text>
+          </TouchableOpacity>
         </View>
       )}
+      <WasteTypeSelector
+        visible={selectorVisible}
+        suggested={suggestedType}
+        onClose={() => setSelectorVisible(false)}
+        onSelect={async (type) => {
+          try {
+            // Use a real reportId; here we used 123 as placeholder — in production use report.id
+            await reportService.updateReportClassification(currentReportId, type);
+            alert('Clasificación corregida a ' + type);
+          } catch (e) {
+            console.error(e);
+            alert('Error al guardar la corrección');
+          }
+        }}
+      />
     </View>
   );
 }

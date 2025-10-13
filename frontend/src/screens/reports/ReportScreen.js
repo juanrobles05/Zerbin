@@ -3,6 +3,7 @@ import { View, Text, SafeAreaView, Image, StyleSheet, ScrollView, TouchableOpaci
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { reportService, classify } from '../../services/api/reportService';
+import WasteTypeSelector from '../../components/common/WasteTypeSelector';
 
 const getAddressFromCoords = async (lat, lon) => {
   try {
@@ -41,6 +42,7 @@ export function ReportScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [description, setDescription] = useState('');
+  const [selectorVisible, setSelectorVisible] = useState(false);
   const [address, setAddress] = useState('');
 
   useEffect(() => {
@@ -111,9 +113,26 @@ export function ReportScreen({ navigation, route }) {
           <View style={styles.classificationContainer}>
             <Text>Tipo de residuo: {classification.type}</Text>
             <Text>Confianza: {classification.confidence}%</Text>
+            <TouchableOpacity style={styles.fixButton} onPress={() => setSelectorVisible(true)}>
+              <Text style={styles.fixText}>Corregir clasificación</Text>
+            </TouchableOpacity>
           </View>
         </>
       )}
+
+      <WasteTypeSelector
+        visible={selectorVisible}
+        suggested={classification?.type}
+        onClose={() => setSelectorVisible(false)}
+        onSelect={(type) => {
+          // Update classification in-memory so the corrected value is submitted
+          setClassification((prev) => ({
+            ...prev,
+            type,
+            corrected_by_user: true,
+          }));
+        }}
+      />
 
       {/* Ubicación */}
       <View style={styles.fieldContainer}>
