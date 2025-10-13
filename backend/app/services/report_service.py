@@ -10,22 +10,44 @@ class ReportService:
         pass
 
     @staticmethod
-    def create_report(db, report_data, image_url, ai_classification):
+    async def create_report(db, report_data):
+
         # Crear instancia del modelo Report
         report = Report(
             latitude=report_data.latitude,
             longitude=report_data.longitude,
             description=report_data.description,
-            image_url=image_url,
-            address=get_address_from_coords(report_data.latitude, report_data.longitude),  # Si tienes una función para esto
-            waste_type=ai_classification.get("type"),
-            confidence_score=ai_classification.get("confidence"),
+            image_url=report_data.image_url,
+            address=get_address_from_coords(report_data.latitude, report_data.longitude),
+            waste_type=report_data.ai_classification.get("type"),
+            confidence_score=report_data.ai_classification.get("confidence"),
             status="pending"
         )
         db.add(report)
         db.commit()
         db.refresh(report)
-        # Retornar el objeto, FastAPI lo serializa usando ReportResponse
         return report
 
-# Debes definir o importar la función get_address_from_coords si quieres calcular la dirección.
+    def get_reports(db, skip=0, limit=50, status=None, waste_type=None):
+        query = db.query(Report)
+        if status:
+            query = query.filter(Report.status == status)
+        if waste_type:
+            query = query.filter(Report.waste_type == waste_type)
+        total = query.count()
+        reports = query.offset(skip).limit(limit).all()
+        return reports, total
+
+    def get_report_by_id(db, report_id):
+        return db.query(Report).filter(Report.id == report_id).first()
+
+    def update_report_status(db, report_id, status):
+        report = db.query(Report).filter(Report.id == report_id).first()
+        if report:
+            report.status = status
+            if status == "resolved":
+                from datetime import datetime
+                report.resolved_at = datetime.now()
+            db.commit()
+            db.refresh(report)
+        return report

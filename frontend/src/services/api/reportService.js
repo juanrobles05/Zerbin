@@ -3,21 +3,24 @@ import { API_CONFIG } from '../../utils/constants';
 
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  timeout: API_CONFIG.TIMEOUT,
 });
+
+// Helper to build a file object compatible with React Native FormData
+const buildFile = (imageUri, name = `photo_${Date.now()}.jpg`, type = 'image/jpeg') => {
+  return {
+    uri: imageUri,
+    name,
+    type,
+  };
+};
 
 export const classify = {
   image: async (imageUri) => {
     try {
       const formData = new FormData();
-      formData.append('image', {
-        uri: imageUri,
-        name: 'waste.jpg',
-        type: 'image/jpeg',
-      });
+      formData.append('image', buildFile(imageUri));
+
       const response = await apiClient.post(
         API_CONFIG.ENDPOINTS.CLASSIFY_IMAGE,
         formData,
@@ -27,6 +30,7 @@ export const classify = {
           }
         }
       );
+
       return response.data;
     } catch (error) {
       console.error('Error classifying image:', error);
@@ -36,23 +40,22 @@ export const classify = {
 };
 
 export const reportService = {
-  uploadImage: async (imageUri, location) => {
+  // Create report by sending image file + fields as multipart/form-data
+  createReport: async (imageUri, location, description, classification) => {
     try {
-      console.log('Uploading image...');
       const formData = new FormData();
-      formData.append('image', {
-        uri: imageUri,
-        type: 'image/jpg',
-        name: `waste-report-${Date.now()}.jpg`
-      });
+      formData.append('image', buildFile(imageUri));
+      formData.append('latitude', String(location?.coords?.latitude ?? ''));
+      formData.append('longitude', String(location?.coords?.longitude ?? ''));
 
-      if (location) {
-        formData.append('latitude', location.coords.latitude.toString());
-        formData.append('longitude', location.coords.longitude.toString());
+      if (classification) {
+        formData.append('ai_classification', JSON.stringify(classification));
       }
 
+      if (description) formData.append('description', description);
+
       const response = await apiClient.post(
-        API_CONFIG.ENDPOINTS.UPLOAD_IMAGE,
+        API_CONFIG.ENDPOINTS.REPORTS,
         formData,
         {
           headers: {
@@ -63,21 +66,8 @@ export const reportService = {
 
       return response.data;
     } catch (error) {
-      console.error('Error uploading image:', error);
-      throw error;
-    }
-  },
-
-  createReport: async (reportData) => {
-    try {
-      const response = await apiClient.post(
-        API_CONFIG.ENDPOINTS.REPORTS,
-        reportData
-      );
-      return response.data;
-    } catch (error) {
       console.error('Error creating report:', error);
       throw error;
     }
-  }
+  },
 };

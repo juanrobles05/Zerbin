@@ -12,6 +12,8 @@ export function ReportScreen({ navigation, route }) {
   const initialLocation = route?.params?.location;
   const [classification, setClassification] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [description, setDescription] = useState('');
   const [locationAddress, setLocationAddress] = useState('');
   
   const { 
@@ -191,6 +193,19 @@ export function ReportScreen({ navigation, route }) {
             <Text>Confianza: {classification.confianza}%</Text>
           </View>
         )}
+
+        {/* Descripción */}
+        <View style={styles.detailsContainer}>
+          <Text style={styles.sectionTitle}>Descripción (opcional)</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Agrega una descripción del residuo..."
+            placeholderTextColor="#9CA3AF"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+          />
+        </View>
       </ScrollView>
 
       {/* Submit Button */}
@@ -210,26 +225,35 @@ export function ReportScreen({ navigation, route }) {
               return;
             }
 
-            setLoading(true);
+            setReportLoading(true);
             try {
-              await reportService.uploadImage(imageUri, activeLocation);
+              await reportService.createReport(imageUri, activeLocation, description, classification);
               alert('Reporte enviado exitosamente');
-              navigation.goBack();
+              navigation.navigate('Home');
             } catch (error) {
+              console.error('Error al enviar el reporte:', error);
               alert('Error al enviar el reporte');
+            } finally {
+              setReportLoading(false);
             }
-            setLoading(false);
           }}
-          style={styles.submitButtonContainer}
+          style={[styles.submitButtonContainer, reportLoading && styles.disabledButton]}
+          disabled={reportLoading}
         >
           <LinearGradient
-            colors={["#10B981", "#059669", "#047857"]}
+            colors={reportLoading ? ["#9CA3AF", "#9CA3AF", "#9CA3AF"] : ["#10B981", "#059669", "#047857"]}
             style={styles.submitButton}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <FontAwesome5 name="paper-plane" size={20} color="#FFFFFF" />
-            <Text style={styles.submitButtonText}>ENVIAR REPORTE</Text>
+            {reportLoading ? (
+              <FontAwesome5 name="spinner" size={20} color="#FFFFFF" />
+            ) : (
+              <FontAwesome5 name="paper-plane" size={20} color="#FFFFFF" />
+            )}
+            <Text style={styles.submitButtonText}>
+              {reportLoading ? 'ENVIANDO...' : 'ENVIAR REPORTE'}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -520,5 +544,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 })

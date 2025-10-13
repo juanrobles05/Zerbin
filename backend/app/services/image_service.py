@@ -1,43 +1,57 @@
-import os
 from PIL import Image
 import io
-import uuid
-
-UPLOAD_DIR = "uploads"
+import uuid, time
+import tempfile
+import os
+from app.core.supabase_client import supabase
+from app.core.config import settings
 
 class ImageService:
-    def __init__(self):
-        os.makedirs(UPLOAD_DIR, exist_ok=True)  # Crea carpeta si no existe
-
-    def save_image(self, image_data: bytes, filename: str = None):
+    async def upload_to_supabase(
+        self,
+        file_bytes: bytes,
+        original_filename: str,
+        bucket: str = settings.SUPABASE_BUCKET_NAME,
+        quality: int = settings.IMAGE_QUALITY,
+        max_size_mb: int = settings.IMAGE_MAX_SIZE_MB,
+    ):
         """
-        Guarda la imagen en disco y devuelve la ruta.
+        Valida, comprime y sube la imagen a Supabase Storage. Retorna la URL pública.
         """
-        if not filename:
-            filename = f"{uuid.uuid4().hex}.jpg"  # Nombre único
-
-        file_path = os.path.join(UPLOAD_DIR, filename)
-
-        try:
-            img = Image.open(io.BytesIO(image_data))
-            img = img.convert("RGB")  # Normaliza
-            img.save(file_path, format="JPEG")
-        except Exception as e:
-            raise ValueError("No se pudo procesar la imagen") from e
-
-        return file_path
-
-    def validate_image(self, image_data: bytes, max_size_mb: int = 5):
-        """
-        Valida tamaño y formato de la imagen.
-        """
-        size_mb = len(image_data) / (1024 * 1024)
+        # Validar tamaño
+        size_mb = len(file_bytes) / (1024 * 1024)
         if size_mb > max_size_mb:
             raise ValueError(f"La imagen supera el tamaño máximo de {max_size_mb}MB")
 
-        try:
-            Image.open(io.BytesIO(image_data))
-        except Exception:
-            raise ValueError("El archivo no es una imagen válida")
+        # Validar extensión
+        file_ext = original_filename.split('.')[-1].lower()
+        allowed_exts = ["jpg", "jpeg", "png", "webp"]
+        if file_ext not in allowed_exts:
+            raise ValueError(f"Extensión de imagen no permitida: .{file_ext}")
 
-        return True
+        # Comprimir imagen y crear archivo temporal
+        try:
+            img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+            img.save(temp_file.name, format="JPEG", quality=quality)
+        except Exception as e:
+            raise ValueError("No se pudo procesar la imagen para compresión") from e
+
+        # Crear nombre único para la imagen
+        timestamp = int(time.time())
+        file_name = f"{timestamp}_{uuid.uuid4().hex[:8]}.jpg"
+
+        # Subir a Supabase usando la ruta del archivo temporal
+        try:
+            response = supabase.storage.from_(bucket).upload(file_name, temp_file.name)
+        finally:
+            temp_file.close()
+            os.remove(temp_file.name)
+
+        # Manejo de errores en la respuesta de Supabase
+        if isinstance(response, dict) and response.get("error"):
+            raise ValueError(f"Error subiendo la imagen a Supabase: {response['error']}")
+
+        # Obtener la URL pública de la imagen subida
+        public_url = supabase.storage.from_(bucket).get_public_url(file_name)
+        return public_url

@@ -1,7 +1,5 @@
-import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from app.core.config import settings
@@ -24,18 +22,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=settings.ALLOWED_CREDENTIALS,
+    allow_methods=settings.ALLOWED_METHODS,
+    allow_headers=settings.ALLOWED_HEADERS,
 )
-
-# Crear directorio de uploads si no existe
-uploads_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads"))
-os.makedirs(uploads_dir, exist_ok=True)
-os.makedirs(os.path.join(uploads_dir, "images"), exist_ok=True)
-os.makedirs(os.path.join(uploads_dir, "temp"), exist_ok=True)
-
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # Incluir rutas de la API
 app.include_router(api_router, prefix="/api/v1")
