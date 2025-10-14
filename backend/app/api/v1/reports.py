@@ -73,11 +73,12 @@ async def get_reports(
     limit: int = 50,
     status: Optional[str] = None,
     waste_type: Optional[str] = None,
+    priority: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
-    """Obtener lista de reportes con filtros opcionales"""
+    """Obtener lista de reportes con filtros opcionales, incluyendo prioridad"""
     reports, total = ReportService.get_reports(
-        db=db, skip=skip, limit=limit, status=status, waste_type=waste_type
+        db=db, skip=skip, limit=limit, status=status, waste_type=waste_type, priority=priority
     )
     return ReportListResponse(
         reports=reports,
@@ -108,4 +109,37 @@ async def update_report_status(
     )
     if not updated_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    return updated_report
+
+
+@router.get("/urgent", response_model=list[ReportResponse])
+async def get_urgent_reports(
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """Obtener reportes urgentes (alta prioridad) para alertas"""
+    urgent_reports = ReportService.get_urgent_reports(db=db, limit=limit)
+    return urgent_reports
+
+
+@router.get("/priority/{priority_level}", response_model=ReportListResponse)
+async def get_reports_by_priority(
+    priority_level: int,
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """Obtener reportes filtrados por nivel de prioridad (1=baja, 2=media, 3=alta)"""
+    if priority_level not in [1, 2, 3]:
+        raise HTTPException(status_code=400, detail="El nivel de prioridad debe ser 1, 2 o 3")
+    
+    reports, total = ReportService.get_reports(
+        db=db, skip=skip, limit=limit, priority=priority_level
+    )
+    return ReportListResponse(
+        reports=reports,
+        total=total,
+        page=(skip // limit) + 1,
+        per_page=limit
+    )
     return updated_report

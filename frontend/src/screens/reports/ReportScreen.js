@@ -7,15 +7,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { THEME } from '../../styles/theme';
-import { reportService, classify } from '../../services/api/reportService';
+import { reportService, classify, priorityService } from '../../services/api/reportService';
 import { PointsOverlay } from "../../components/PointsOverlay";
 import { useLocation } from '../../hooks/useLocation';
+import { PriorityIndicator, DecompositionTime } from '../../components/common/PriorityIndicator';
 
 export function ReportScreen({ navigation, route }) {
   const imageUri = route?.params?.image;
   const initialLocation = route?.params?.location;
 
   const [classification, setClassification] = useState(null);
+  const [priorityInfo, setPriorityInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [description, setDescription] = useState('');
@@ -24,30 +26,45 @@ export function ReportScreen({ navigation, route }) {
   const [earnedPoints, setEarnedPoints] = useState(0);
   const [totalPoints, setTotalPoints] = useState(0);
 
-  const { 
-    manualLocation, 
-    setManualSelectedLocation, 
-    getActiveLocation 
-  } = useLocation();
+  const { manualLocation, setManualSelectedLocation, getActiveLocation } = useLocation();
 
   useEffect(() => {
     if (imageUri) classifyImage(imageUri);
   }, [imageUri]);
 
   useEffect(() => {
-    // Si hay ubicación inicial (de cámara) pero no manual, se usa esa
     if (initialLocation && !manualLocation) {
       setManualSelectedLocation(initialLocation);
     }
   }, [initialLocation, manualLocation]);
 
   useEffect(() => {
-    // Actualiza dirección cuando cambia la ubicación activa
     const activeLocation = getActiveLocation();
-    if (activeLocation) {
-      getAddressFromLocation(activeLocation);
-    }
+    if (activeLocation) getAddressFromLocation(activeLocation);
   }, [manualLocation, initialLocation]);
+
+  const classifyImage = async (uri) => {
+    setLoading(true);
+    try {
+      const data = await classify.image(uri);
+      setClassification(data);
+
+      // Obtener prioridad según el tipo clasificado
+      if (data.type) {
+        try {
+          const priority = await priorityService.getPriorityInfo(data.type);
+          setPriorityInfo(priority);
+        } catch (priorityError) {
+          console.error('Error obteniendo información de prioridad:', priorityError);
+        }
+      }
+    } catch (error) {
+      console.error('Error clasificando:', error);
+      alert('Error al clasificar la imagen');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getAddressFromLocation = async (location) => {
     if (!location?.coords) return;
@@ -59,13 +76,7 @@ export function ReportScreen({ navigation, route }) {
 
       if (result.length > 0) {
         const info = result[0];
-        const parts = [
-          info.street,
-          info.streetNumber,
-          info.district,
-          info.city,
-          info.region
-        ].filter(Boolean);
+        const parts = [info.street, info.streetNumber, info.district, info.city, info.region].filter(Boolean);
         setLocationAddress(parts.join(', ') || 'Dirección no disponible');
       } else {
         setLocationAddress('Dirección no disponible');
@@ -76,24 +87,10 @@ export function ReportScreen({ navigation, route }) {
     }
   };
 
-  const classifyImage = async (uri) => {
-    setLoading(true);
-    try {
-      const data = await classify.image(uri);
-      setClassification(data);
-    } catch (error) {
-      console.error('Error clasificando:', error);
-      alert('Error al clasificar la imagen');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSelectLocation = () => {
     const currentLocation = getActiveLocation();
     const defaultLocation = currentLocation?.coords || initialLocation?.coords || {
-      latitude: 4.7110, // Bogotá por defecto
-      longitude: -74.0721
+      latitude: 4.7110, longitude: -74.0721
     };
 
     navigation.navigate('LocationSelector', {
@@ -125,7 +122,6 @@ export function ReportScreen({ navigation, route }) {
     try {
       await reportService.createReport(imageUri, activeLocation, description, classification);
 
-      // ✅ Aquí se obtienen los puntos del backend (ajusta tu IP local o endpoint real)
       const response = await fetch("http://192.168.0.102:8000/api/v1/users/1/points");
       const data = await response.json();
       const lastReport = data.history[data.history.length - 1];
@@ -185,10 +181,7 @@ export function ReportScreen({ navigation, route }) {
                   {locationAddress || 'Obteniendo dirección...'}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.changeLocationButton}
-                onPress={handleSelectLocation}
-              >
+              <TouchableOpacity style={styles.changeLocationButton} onPress={handleSelectLocation}>
                 <FontAwesome5 name="edit" size={16} color={THEME.colors.primary} />
                 <Text style={styles.changeLocationText}>Cambiar</Text>
               </TouchableOpacity>
@@ -196,13 +189,8 @@ export function ReportScreen({ navigation, route }) {
           ) : (
             <View style={styles.noLocationContainer}>
               <FontAwesome5 name="exclamation-triangle" size={24} color={THEME.colors.warning} />
-              <Text style={styles.noLocationText}>
-                No se detectó ubicación automáticamente
-              </Text>
-              <TouchableOpacity
-                style={styles.selectLocationButton}
-                onPress={handleSelectLocation}
-              >
+              <Text style={styles.noLocationText}>No se detectó ubicación automáticamente</Text>
+              <TouchableOpacity style={styles.selectLocationButton} onPress={handleSelectLocation}>
                 <LinearGradient
                   colors={[THEME.colors.primary, "#059669", "#047857"]}
                   start={{ x: 0, y: 0 }}
@@ -221,9 +209,43 @@ export function ReportScreen({ navigation, route }) {
         {loading && <Text style={styles.textLoader}>Cargando clasificación...</Text>}
         {classification && (
           <View style={styles.detailsContainer}>
-            <Text style={styles.sectionTitle}>Clasificación</Text>
-            <Text>Tipo de residuo: {classification.type}</Text>
-            <Text>Confianza: {classification.confidence}%</Text>
+            <View style={styles.sectionHeader}>
+              <FontAwesome5 name="microscope" size={20} color={THEME.colors.primary} />
+              <Text style={styles.sectionTitle}>Clasificación Automática</Text>
+            </View>
+            
+            <View style={styles.classificationContainer}>
+              <View style={styles.classificationRow}>
+                <Text style={styles.classificationLabel}>Tipo de residuo:</Text>
+                <Text style={styles.classificationValue}>{classification.type}</Text>
+              </View>
+              <View style={styles.classificationRow}>
+                <Text style={styles.classificationLabel}>Confianza de IA:</Text>
+                <Text style={styles.classificationValue}>{classification.confianza}%</Text>
+              </View>
+
+              {priorityInfo && (
+                <View style={styles.prioritySection}>
+                  <Text style={styles.priorityTitle}>Nivel de Prioridad</Text>
+                  <View style={styles.priorityIndicator}>
+                    <PriorityIndicator 
+                      priority={priorityInfo.priority}
+                      size="large"
+                      isUrgent={priorityInfo.is_urgent}
+                    />
+                  </View>
+                  <DecompositionTime days={priorityInfo.decomposition_days} />
+                  {priorityInfo.is_urgent && (
+                    <View style={styles.urgentAlert}>
+                      <FontAwesome5 name="bell" size={16} color="#EF4444" />
+                      <Text style={styles.urgentAlertText}>
+                        ¡Residuo de descomposición rápida! Requiere atención prioritaria.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
         )}
 
@@ -254,11 +276,7 @@ export function ReportScreen({ navigation, route }) {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            {reportLoading ? (
-              <FontAwesome5 name="spinner" size={20} color="#FFFFFF" />
-            ) : (
-              <FontAwesome5 name="paper-plane" size={20} color="#FFFFFF" />
-            )}
+            <FontAwesome5 name={reportLoading ? "spinner" : "paper-plane"} size={20} color="#FFFFFF" />
             <Text style={styles.submitButtonText}>
               {reportLoading ? 'ENVIANDO...' : 'ENVIAR REPORTE'}
             </Text>
@@ -291,7 +309,17 @@ const styles = StyleSheet.create({
   successText: { color: "#10B981", fontSize: 14, marginLeft: 8 },
   textLoader: { color: "#9CA3AF", textAlign: "center", marginVertical: 10 },
   detailsContainer: { backgroundColor: "#4B5563", margin: 20, borderRadius: 12, padding: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#FFFFFF", marginBottom: 20 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#FFFFFF", marginLeft: 8 },
+  classificationContainer: { marginTop: 8 },
+  classificationRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#374151' },
+  classificationLabel: { fontSize: 14, color: '#9CA3AF' },
+  classificationValue: { fontSize: 14, color: '#FFFFFF', fontWeight: 'bold' },
+  prioritySection: { marginTop: 16, padding: 16, backgroundColor: '#374151', borderRadius: 8 },
+  priorityTitle: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center', marginBottom: 8 },
+  priorityIndicator: { alignItems: 'center', marginBottom: 12 },
+  urgentAlert: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 12, marginTop: 8 },
+  urgentAlertText: { fontSize: 13, color: '#EF4444', marginLeft: 8, flex: 1 },
   textInput: { backgroundColor: "#374151", borderRadius: 8, padding: 16, color: "#FFFFFF", fontSize: 14, minHeight: 80, textAlignVertical: "top" },
   submitContainer: { padding: 20, backgroundColor: "#374151" },
   submitButtonContainer: { borderRadius: 12, overflow: "hidden", elevation: 8 },
@@ -311,5 +339,5 @@ const styles = StyleSheet.create({
   noLocationText: { fontSize: 16, color: "#9CA3AF", textAlign: "center", marginVertical: 12 },
   selectLocationButton: { borderRadius: 8, overflow: "hidden", marginTop: 8 },
   selectLocationGradient: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 24 },
-  selectLocationButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "bold", marginLeft: 8 }
+  selectLocationButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "bold", marginLeft: 8 },
 });
