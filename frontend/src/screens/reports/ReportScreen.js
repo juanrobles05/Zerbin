@@ -6,6 +6,7 @@ import * as Location from 'expo-location';
 import { THEME } from '../../styles/theme';
 import { reportService, classify } from '../../services/api/reportService';
 import WasteTypeSelector from '../../components/common/WasteTypeSelector';
+import { useLocation } from '../../hooks/useLocation';
 
 const getAddressFromCoords = async (lat, lon) => {
   try {
@@ -44,7 +45,13 @@ export function ReportScreen({ navigation, route }) {
   const [reportLoading, setReportLoading] = useState(false);
   const [description, setDescription] = useState('');
   const [selectorVisible, setSelectorVisible] = useState(false);
-  const [address, setAddress] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+
+  const { 
+    manualLocation, 
+    setManualSelectedLocation, 
+    getActiveLocation 
+  } = useLocation();
 
   useEffect(() => {
     if (imageUri) {
@@ -219,8 +226,7 @@ export function ReportScreen({ navigation, route }) {
               <Text style={styles.fixText}>Corregir clasificación</Text>
             </TouchableOpacity>
           </View>
-        </>
-      )}
+        )}
 
       <WasteTypeSelector
         visible={selectorVisible}
@@ -236,19 +242,7 @@ export function ReportScreen({ navigation, route }) {
         }}
       />
 
-      {/* Ubicación */}
-      <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>Ubicación detectada</Text>
-        <View style={styles.locationContainer}>
-          <View style={styles.locationInfo}>
-            <FontAwesome5 name="map-marker-alt" size={16} color="#10B981" />
-            <Text style={styles.locationText}>{address}</Text>
-          </View>
-          <TouchableOpacity style={styles.changeButton}>
-            <Text style={styles.changeButtonText}>Cambiar</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* (location display handled above in the locationSection) */}
 
         {/* Descripción */}
         <View style={styles.detailsContainer}>
