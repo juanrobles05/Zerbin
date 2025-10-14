@@ -1,16 +1,10 @@
-from pathlib import Path
-from decouple import Config, RepositoryEnv
+from decouple import config
 from typing import List
 from pydantic_settings import BaseSettings
 
-# === Ruta absoluta hacia el archivo .env ===
-BASE_DIR = Path(__file__).resolve().parent.parent  # /backend/app
-ENV_PATH = BASE_DIR.parent / ".env"                # /backend/.env
-
-config = Config(RepositoryEnv(ENV_PATH))
-
 
 class Settings(BaseSettings):
+
     DEBUG: bool = config("DEBUG", default=False, cast=bool)
     PROJECT_NAME: str = "Zerbin API"
     VERSION: str = "1.0.0"
@@ -39,6 +33,7 @@ class Settings(BaseSettings):
     IMAGE_MAX_SIZE_MB: int = config("IMAGE_MAX_SIZE_MB", default=5, cast=int)
     IMAGE_ALLOWED_EXTENSIONS: List[str] = [".jpg", ".jpeg", ".png", ".webp"]
 
+
     # AI / ML
     AI_MODEL_ID: str = config("AI_MODEL_ID", default="prithivMLmods/Trash-Net")
     CONFIDENCE_THRESHOLD: float = config("CONFIDENCE_THRESHOLD", default=0.7, cast=float)
@@ -47,8 +42,7 @@ class Settings(BaseSettings):
     ENABLE_NOTIFICATIONS: bool = config("ENABLE_NOTIFICATIONS", default=True, cast=bool)
 
     class Config:
-        env_file = str(ENV_PATH)
+        env_file = ".env"
         extra = "ignore"
-
 
 settings = Settings()
