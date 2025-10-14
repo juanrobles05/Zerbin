@@ -3,30 +3,21 @@ import { View, Text, SafeAreaView, Image, StyleSheet, ScrollView, TouchableOpaci
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { reportService, classify } from '../../services/api/reportService';
+import { PointsOverlay } from "../../components/PointsOverlay";
 
 const getAddressFromCoords = async (lat, lon) => {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
-    const response = await fetch(url, {
-      headers: { "User-Agent": "my-app" }, // Nominatim lo exige
-    });
+    const response = await fetch(url, { headers: { "User-Agent": "my-app" } });
     const data = await response.json();
 
-    function clean(str) {
-      return str ? String(str).trim() : "";
-    }
-
+    const clean = str => str ? String(str).trim() : "";
     const city = clean(data.address?.city).replace("Perímetro Urbano", "");
     const neighborhood = clean(data.address?.neighbourhood);
     const road = clean(data.address?.road);
     const houseNumber = data.address?.house_number ? `#${clean(data.address.house_number)}` : "";
 
-    const direccion = [road, houseNumber, neighborhood, city]
-      .filter(Boolean)
-      .join(", ")
-      || "Dirección no encontrada";
-
-    return direccion;
+    return [road, houseNumber, neighborhood, city].filter(Boolean).join(", ") || "Dirección no encontrada";
   } catch (error) {
     console.error("Error obteniendo dirección:", error);
     return null;
@@ -34,26 +25,26 @@ const getAddressFromCoords = async (lat, lon) => {
 };
 
 export function ReportScreen({ navigation, route }) {
-
   const imageUri = route?.params?.image;
   const location = route?.params?.location;
+
   const [classification, setClassification] = useState(null);
   const [loading, setLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
+  const [showPointsOverlay, setShowPointsOverlay] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState(0);
+  const [totalPoints, setTotalPoints] = useState(0);
 
   useEffect(() => {
     if (location) {
-      getAddressFromCoords(location.coords.latitude, location.coords.longitude).then((direccion) =>
-          setAddress(direccion)
-        );
+      getAddressFromCoords(location.coords.latitude, location.coords.longitude)
+        .then(direccion => setAddress(direccion));
     } else {
       setAddress("Ubicación no disponible");
     }
-    if (imageUri) {
-      classifyImage(imageUri);
-    }
+    if (imageUri) classifyImage(imageUri);
   }, [imageUri]);
 
   const classifyImage = async (uri) => {
@@ -68,26 +59,48 @@ export function ReportScreen({ navigation, route }) {
     setLoading(false);
   };
 
+  const handleReportSubmit = async () => {
+    setReportLoading(true);
+    try {
+      if (!location || !location.coords) {
+        alert('Falta ubicación');
+        return;
+      }
+
+      await reportService.createReport(imageUri, location, description, classification);
+
+      
+      const response = await fetch("http://192.168.0.102:8000/api/v1/users/1/points"); // Cambiar con TU dirección IP y puerto utilizado
+      const data = await response.json();
+      const lastReport = data.history[data.history.length - 1];
+      const pointsThisReport = lastReport ? lastReport.points : 0;
+
+      setEarnedPoints(pointsThisReport);      
+      setTotalPoints(data.points || 0);       
+      setShowPointsOverlay(true);
+
+    } catch (error) {
+      console.error('Error al enviar el reporte:', error);
+      alert('Error al enviar el reporte');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerSubtitle}>Completa los detalles del residuo</Text>
       </View>
-      {reportLoading && (
-        <Text style={styles.textLoader}>Enviando reporte...</Text>
-      )}
+      {reportLoading && <Text style={styles.textLoader}>Enviando reporte...</Text>}
 
       {/* Image Preview */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.imageSection}>
           <View style={styles.imageContainer}>
             {imageUri ? (
-              <Image
-                source={{ uri: imageUri }}
-                style={styles.previewImage}
-                resizeMode="cover"
-              />
+              <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
             ) : (
               <View style={styles.placeholderImage}>
                 <FontAwesome5 name="image" size={60} color="#A3A3A3" />
@@ -103,68 +116,49 @@ export function ReportScreen({ navigation, route }) {
           </View>
         </View>
 
-      {/* Clasificación */}
-      {loading && <Text style={styles.textLoader}>Cargando clasificación...</Text>}
-      {classification && (
-        <>
-          <Text style={styles.sectionTitle}>Clasificación</Text>
-          <View style={styles.classificationContainer}>
-            <Text>Tipo de residuo: {classification.type}</Text>
-            <Text>Confianza: {classification.confidence}%</Text>
-          </View>
-        </>
-      )}
+        {/* Clasificación */}
+        {loading && <Text style={styles.textLoader}>Cargando clasificación...</Text>}
+        {classification && (
+          <>
+            <Text style={styles.sectionTitle}>Clasificación</Text>
+            <View style={styles.classificationContainer}>
+              <Text>Tipo de residuo: {classification.type}</Text>
+              <Text>Confianza: {classification.confidence}%</Text>
+            </View>
+          </>
+        )}
 
-      {/* Ubicación */}
-      <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>Ubicación detectada</Text>
-        <View style={styles.locationContainer}>
-          <View style={styles.locationInfo}>
-            <FontAwesome5 name="map-marker-alt" size={16} color="#10B981" />
-            <Text style={styles.locationText}>{address}</Text>
+        {/* Ubicación */}
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Ubicación detectada</Text>
+          <View style={styles.locationContainer}>
+            <View style={styles.locationInfo}>
+              <FontAwesome5 name="map-marker-alt" size={16} color="#10B981" />
+              <Text style={styles.locationText}>{address}</Text>
+            </View>
+            <TouchableOpacity style={styles.changeButton}>
+              <Text style={styles.changeButtonText}>Cambiar</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.changeButton}>
-            <Text style={styles.changeButtonText}>Cambiar</Text>
-          </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Descripción */}
-      <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>Descripción (opcional)</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Agrega una descripción..."
-          placeholderTextColor="#9CA3AF"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-        />
-      </View>
-    </ScrollView>
+        {/* Descripción */}
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Descripción (opcional)</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Agrega una descripción..."
+            placeholderTextColor="#9CA3AF"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+          />
+        </View>
+      </ScrollView>
 
       {/* Submit Button */}
       <View style={styles.submitContainer}>
-        <TouchableOpacity
-          onPress={async () => {
-            setReportLoading(true);
-            try {
-              if (!location || !location.coords) {
-                alert('Falta ubicación');
-                return;
-              }
-              await reportService.createReport(imageUri, location, description, classification);
-              alert('Reporte enviado exitosamente');
-              navigation.navigate('Home');
-            } catch (error) {
-              console.error('Error al enviar el reporte:', error);
-              alert('Error al enviar el reporte');
-            } finally {
-              setReportLoading(false);
-            }
-          }}
-          style={styles.submitButtonContainer}
-        >
+        <TouchableOpacity onPress={handleReportSubmit} style={styles.submitButtonContainer}>
           <LinearGradient
             colors={["#10B981", "#059669", "#047857"]}
             style={styles.submitButton}
@@ -176,9 +170,22 @@ export function ReportScreen({ navigation, route }) {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* 🔽 OVERLAY DE PUNTOS */}
+      <PointsOverlay
+        visible={showPointsOverlay}
+        points={earnedPoints}
+        totalPoints={totalPoints}
+        onClose={() => {
+          setShowPointsOverlay(false);
+          navigation.navigate("Home");
+        }}
+      />
     </SafeAreaView>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {

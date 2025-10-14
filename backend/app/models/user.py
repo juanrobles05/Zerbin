@@ -1,3 +1,4 @@
+# cambios en models/users.py
 from sqlalchemy import Column, Integer, String, DateTime, func
 from sqlalchemy.orm import relationship
 from .base import Base
@@ -10,6 +11,9 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # nuevo campo
+    points = Column(Integer, default=0, nullable=False)
 
     # Relationships
     reports = relationship("Report", back_populates="user")
