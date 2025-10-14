@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body
 from sqlalchemy.orm import Session
 from typing import Optional
+from pydantic import BaseModel, ValidationError
 import json
 from app.core.database import get_db
-from app.schemas.report import ReportResponse, ReportListResponse, ReportBase, PriorityStatsResponse
-from pydantic import ValidationError
+from app.schemas.report import (
+    ReportResponse,
+    ReportListResponse,
+    ReportBase,
+    PriorityStatsResponse,
+)
 from app.services.report_service import ReportService
 from app.services.image_service import ImageService
 from app.services.ai_service import AIService
@@ -32,19 +37,16 @@ async def create_report(
     file_bytes = await image.read()
     image_filename = image.filename
 
-    # Validar coordenadas y descripción
     try:
         ReportBase(latitude=latitude, longitude=longitude, description=description)
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=e.errors())
 
-    # Subir imagen a Supabase
     public_url = await ImageService().upload_to_supabase(
         file_bytes=file_bytes,
         original_filename=image_filename
     )
 
-    # Clasificación IA
     if ai_classification is not None and str(ai_classification).strip() != "string":
         try:
             ai_result = json.loads(ai_classification)
@@ -53,7 +55,6 @@ async def create_report(
     else:
         ai_result = AIService().classify_waste(file_bytes)
 
-    # Crear reporte en base de datos
     report_data = type('ReportData', (), {})()
     report_data.latitude = latitude
     report_data.longitude = longitude
@@ -169,6 +170,26 @@ async def update_report_status(
     return updated_report
 
 
+# ✅ De juanPablo: corrección manual de clasificación
+@router.patch("/{report_id}/classification", response_model=ReportResponse)
+async def update_report_classification(
+    report_id: int,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    """Permite al usuario corregir manualmente el tipo de residuo."""
+    corrected_type = payload.get('corrected_type')
+    if not corrected_type:
+        raise HTTPException(status_code=400, detail="corrected_type is required in body")
+    updated = ReportService.update_report_classification(
+        db=db, report_id=report_id, corrected_type=corrected_type
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    return updated
+
+
+# ✅ De main: recálculo de prioridades
 @router.post("/{report_id}/recalculate-priority", response_model=ReportResponse)
 async def recalculate_report_priority(report_id: int, db: Session = Depends(get_db)):
     """Recalcular la prioridad de un reporte específico."""

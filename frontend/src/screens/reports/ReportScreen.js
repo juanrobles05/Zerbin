@@ -9,6 +9,7 @@ import * as Location from 'expo-location';
 import { THEME } from '../../styles/theme';
 import { reportService, classify, priorityService } from '../../services/api/reportService';
 import { PointsOverlay } from "../../components/PointsOverlay";
+import WasteTypeSelector from '../../components/common/WasteTypeSelector';
 import { useLocation } from '../../hooks/useLocation';
 import { PriorityIndicator, DecompositionTime } from '../../components/common/PriorityIndicator';
 
@@ -21,6 +22,7 @@ export function ReportScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [description, setDescription] = useState('');
+  const [selectorVisible, setSelectorVisible] = useState(false);
   const [locationAddress, setLocationAddress] = useState('');
   const [showPointsOverlay, setShowPointsOverlay] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
@@ -49,14 +51,9 @@ export function ReportScreen({ navigation, route }) {
       const data = await classify.image(uri);
       setClassification(data);
 
-      // Obtener prioridad según el tipo clasificado
       if (data.type) {
-        try {
-          const priority = await priorityService.getPriorityInfo(data.type);
-          setPriorityInfo(priority);
-        } catch (priorityError) {
-          console.error('Error obteniendo información de prioridad:', priorityError);
-        }
+        const priority = await priorityService.getPriorityInfo(data.type);
+        setPriorityInfo(priority);
       }
     } catch (error) {
       console.error('Error clasificando:', error);
@@ -73,7 +70,6 @@ export function ReportScreen({ navigation, route }) {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
-
       if (result.length > 0) {
         const info = result[0];
         const parts = [info.street, info.streetNumber, info.district, info.city, info.region].filter(Boolean);
@@ -141,7 +137,6 @@ export function ReportScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerSubtitle}>Completa los detalles del residuo</Text>
         </View>
@@ -221,19 +216,17 @@ export function ReportScreen({ navigation, route }) {
               </View>
               <View style={styles.classificationRow}>
                 <Text style={styles.classificationLabel}>Confianza de IA:</Text>
-                <Text style={styles.classificationValue}>{classification.confianza}%</Text>
+                <Text style={styles.classificationValue}>{classification.confidence}%</Text>
               </View>
+
+              <TouchableOpacity style={styles.fixButton} onPress={() => setSelectorVisible(true)}>
+                <Text style={styles.fixText}>Corregir clasificación</Text>
+              </TouchableOpacity>
 
               {priorityInfo && (
                 <View style={styles.prioritySection}>
                   <Text style={styles.priorityTitle}>Nivel de Prioridad</Text>
-                  <View style={styles.priorityIndicator}>
-                    <PriorityIndicator 
-                      priority={priorityInfo.priority}
-                      size="large"
-                      isUrgent={priorityInfo.is_urgent}
-                    />
-                  </View>
+                  <PriorityIndicator priority={priorityInfo.priority} size="large" isUrgent={priorityInfo.is_urgent} />
                   <DecompositionTime days={priorityInfo.decomposition_days} />
                   {priorityInfo.is_urgent && (
                     <View style={styles.urgentAlert}>
@@ -248,6 +241,19 @@ export function ReportScreen({ navigation, route }) {
             </View>
           </View>
         )}
+
+        <WasteTypeSelector
+          visible={selectorVisible}
+          suggested={classification?.type}
+          onClose={() => setSelectorVisible(false)}
+          onSelect={(type) => {
+            setClassification((prev) => ({
+              ...prev,
+              type,
+              corrected_by_user: true,
+            }));
+          }}
+        />
 
         {/* Descripción */}
         <View style={styles.detailsContainer}>

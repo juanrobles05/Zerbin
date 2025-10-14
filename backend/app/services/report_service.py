@@ -94,9 +94,7 @@ class ReportService:
 
     @staticmethod
     def get_reports(db, skip=0, limit=50, status=None, waste_type=None, priority=None):
-        """
-        Obtiene reportes con filtros opcionales y ordenados por prioridad descendente.
-        """
+        """Obtiene reportes con filtros opcionales y ordenados por prioridad descendente."""
         query = db.query(Report)
         if status:
             query = query.filter(Report.status == status)
@@ -126,9 +124,7 @@ class ReportService:
 
     @staticmethod
     def update_report_status(db, report_id, status):
-        """
-        Actualiza el estado de un reporte y asigna puntos si se resuelve.
-        """
+        """Actualiza el estado de un reporte y asigna puntos si se resuelve."""
         report = db.query(Report).filter(Report.id == report_id).first()
         if report:
             report.status = status
@@ -144,11 +140,23 @@ class ReportService:
             db.refresh(report)
         return report
 
+    # ✅ Agregado de juanPablo: corrección manual
+    @staticmethod
+    def update_report_classification(db, report_id, corrected_type: str):
+        """Guarda la clasificación corregida manualmente por el usuario."""
+        report = db.query(Report).filter(Report.id == report_id).first()
+        if not report:
+            return None
+        report.manual_classification = corrected_type
+        report.waste_type = corrected_type  # reflejar corrección activa
+        db.commit()
+        db.refresh(report)
+        return report
+
+    # ✅ De main: recálculo de prioridades y estadísticas
     @staticmethod
     def recalculate_priority(db, report_id):
-        """
-        Recalcula la prioridad de un reporte específico.
-        """
+        """Recalcula la prioridad de un reporte específico."""
         report = db.query(Report).filter(Report.id == report_id).first()
         if not report:
             return None
@@ -168,10 +176,7 @@ class ReportService:
 
     @staticmethod
     def recalculate_all_priorities(db):
-        """
-        Recalcula las prioridades de todos los reportes pendientes.
-        Útil para tareas automáticas (cron job).
-        """
+        """Recalcula las prioridades de todos los reportes pendientes."""
         pending_reports = db.query(Report).filter(
             Report.status.in_(["pending", "in_progress"])
         ).all()
@@ -195,9 +200,7 @@ class ReportService:
 
     @staticmethod
     def get_priority_stats(db):
-        """
-        Obtiene estadísticas de prioridad de los reportes activos.
-        """
+        """Obtiene estadísticas de prioridad de los reportes activos."""
         from sqlalchemy import func
         stats = db.query(
             Report.priority,
