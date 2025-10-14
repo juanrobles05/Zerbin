@@ -12,6 +12,7 @@ from app.services.priority_service import PriorityService
 
 router = APIRouter()
 
+
 @router.post("/", response_model=ReportResponse)
 async def create_report(
     image: UploadFile = File(...),
@@ -31,11 +32,10 @@ async def create_report(
     file_bytes = await image.read()
     image_filename = image.filename
 
-    # Validar que lat/long esten en el rango correcto
+    # Validar coordenadas y descripción
     try:
         ReportBase(latitude=latitude, longitude=longitude, description=description)
     except ValidationError as e:
-        # Convertir errores de validación a respuesta HTTP 400
         raise HTTPException(status_code=400, detail=e.errors())
 
     # Subir imagen a Supabase
@@ -44,7 +44,7 @@ async def create_report(
         original_filename=image_filename
     )
 
-    # Usar la clasificación realizada anteriormente si existe (evita recalcular)
+    # Clasificación IA
     if ai_classification is not None and str(ai_classification).strip() != "string":
         try:
             ai_result = json.loads(ai_classification)
@@ -53,7 +53,7 @@ async def create_report(
     else:
         ai_result = AIService().classify_waste(file_bytes)
 
-    # Crear objeto de datos para el reporte
+    # Crear reporte en base de datos
     report_data = type('ReportData', (), {})()
     report_data.latitude = latitude
     report_data.longitude = longitude
@@ -61,11 +61,7 @@ async def create_report(
     report_data.image_url = public_url
     report_data.ai_classification = ai_result
 
-    # Crear el reporte en la base de datos (con prioridad calculada)
-    created_report = await ReportService.create_report(
-        db=db,
-        report_data=report_data
-    )
+    created_report = await ReportService.create_report(db=db, report_data=report_data)
     return created_report
 
 
@@ -78,12 +74,9 @@ async def get_reports(
     priority: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
-    """
-    Obtener lista de reportes con filtros opcionales.
-    Los reportes se ordenan por prioridad (mayor primero) y fecha de creación.
-    """
+    """Obtener lista de reportes con filtros opcionales, ordenados por prioridad y fecha."""
     reports, total = ReportService.get_reports(
-        db=db, skip=skip, limit=limit, status=status, 
+        db=db, skip=skip, limit=limit, status=status,
         waste_type=waste_type, priority=priority
     )
     return ReportListResponse(
@@ -96,9 +89,7 @@ async def get_reports(
 
 @router.get("/stats/priority", response_model=PriorityStatsResponse)
 async def get_priority_statistics(db: Session = Depends(get_db)):
-    """
-    Obtener estadísticas de distribución de prioridades en reportes activos.
-    """
+    """Obtener estadísticas de distribución de prioridades."""
     stats = ReportService.get_priority_stats(db=db)
     return PriorityStatsResponse(
         high=stats.get("High", 0),
@@ -108,9 +99,38 @@ async def get_priority_statistics(db: Session = Depends(get_db)):
     )
 
 
+@router.get("/urgent", response_model=list[ReportResponse])
+async def get_urgent_reports(limit: int = 10, db: Session = Depends(get_db)):
+    """Obtener los reportes urgentes (alta prioridad)."""
+    urgent_reports = ReportService.get_urgent_reports(db=db, limit=limit)
+    return urgent_reports
+
+
+@router.get("/priority/{priority_level}", response_model=ReportListResponse)
+async def get_reports_by_priority(
+    priority_level: int,
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """Obtener reportes filtrados por nivel de prioridad (1=baja, 2=media, 3=alta)."""
+    if priority_level not in [1, 2, 3]:
+        raise HTTPException(status_code=400, detail="El nivel de prioridad debe ser 1, 2 o 3")
+
+    reports, total = ReportService.get_reports(
+        db=db, skip=skip, limit=limit, priority=priority_level
+    )
+    return ReportListResponse(
+        reports=reports,
+        total=total,
+        page=(skip // limit) + 1,
+        per_page=limit
+    )
+
+
 @router.get("/{report_id}", response_model=ReportResponse)
 async def get_report(report_id: int, db: Session = Depends(get_db)):
-    """Obtener un reporte específico por ID"""
+    """Obtener un reporte específico por ID."""
     report = ReportService.get_report_by_id(db=db, report_id=report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
@@ -119,20 +139,16 @@ async def get_report(report_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{report_id}/priority-details")
 async def get_report_priority_details(report_id: int, db: Session = Depends(get_db)):
-    """
-    Obtener detalles del cálculo de prioridad de un reporte específico.
-    Útil para debugging y transparencia del sistema.
-    """
+    """Obtener detalles del cálculo de prioridad de un reporte."""
     report = ReportService.get_report_by_id(db=db, report_id=report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
-    
+
     details = PriorityService.get_priority_details(
         waste_type=report.waste_type,
         confidence_score=report.confidence_score,
         created_at=report.created_at
     )
-    
     return {
         "report_id": report.id,
         "current_priority": report.priority,
@@ -146,24 +162,16 @@ async def update_report_status(
     status: str,
     db: Session = Depends(get_db)
 ):
-    """Actualizar el estado de un reporte (para administradores)"""
-    updated_report = ReportService.update_report_status(
-        db=db, report_id=report_id, status=status
-    )
+    """Actualizar el estado de un reporte."""
+    updated_report = ReportService.update_report_status(db=db, report_id=report_id, status=status)
     if not updated_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     return updated_report
 
 
 @router.post("/{report_id}/recalculate-priority", response_model=ReportResponse)
-async def recalculate_report_priority(
-    report_id: int,
-    db: Session = Depends(get_db)
-):
-    """
-    Recalcular la prioridad de un reporte específico.
-    Útil cuando ha pasado tiempo y la urgencia debe aumentar.
-    """
+async def recalculate_report_priority(report_id: int, db: Session = Depends(get_db)):
+    """Recalcular la prioridad de un reporte específico."""
     updated_report = ReportService.recalculate_priority(db=db, report_id=report_id)
     if not updated_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
@@ -172,10 +180,7 @@ async def recalculate_report_priority(
 
 @router.post("/recalculate-all-priorities")
 async def recalculate_all_priorities(db: Session = Depends(get_db)):
-    """
-    Recalcular las prioridades de todos los reportes pendientes.
-    Endpoint para tareas administrativas o cron jobs.
-    """
+    """Recalcular las prioridades de todos los reportes pendientes."""
     result = ReportService.recalculate_all_priorities(db=db)
     return {
         "message": "Prioridades recalculadas exitosamente",

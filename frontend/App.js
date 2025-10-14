@@ -10,6 +10,7 @@ import { CameraScreen } from './src/screens/camera/CameraScreen';
 import { HomeScreen } from './src/screens/home/HomeScreen';
 import { HistoryScreen } from './src/screens/history/HistoryScreen';
 import { ReportScreen } from './src/screens/reports/ReportScreen';
+import { LocationSelectorScreen } from './src/screens/location/LocationSelectorScreen';
 
 
 // Importar tema
@@ -67,7 +68,7 @@ export default function App() {
             name="Report"
             component={ReportScreen}
             options={{
-              title: 'Crear Reporte',
+              title: 'Nuevo Reporte',
             }}
           />
           <Stack.Screen
@@ -75,6 +76,14 @@ export default function App() {
             component={HistoryScreen}
             options={{
               title: 'Mis Reportes',
+            }}
+          />
+          <Stack.Screen
+            name="LocationSelector"
+            component={LocationSelectorScreen}
+            options={{
+              title: 'Seleccionar Ubicación',
+              presentation: 'modal',
             }}
           />
         </Stack.Navigator>
