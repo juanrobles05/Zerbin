@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body
 from sqlalchemy.orm import Session
 from typing import Optional
+from pydantic import BaseModel
 import json
 from app.core.database import get_db
 from app.schemas.report import ReportResponse, ReportListResponse, ReportBase
@@ -114,10 +115,14 @@ async def update_report_status(
 @router.patch("/{report_id}/classification", response_model=ReportResponse)
 async def update_report_classification(
     report_id: int,
-    corrected_type: str,
+    payload: dict = Body(...),
     db: Session = Depends(get_db)
 ):
     """Permite al usuario corregir manualmente el tipo de residuo."""
+    # Accept JSON body like {"corrected_type": "plastico"}
+    corrected_type = payload.get('corrected_type')
+    if not corrected_type:
+        raise HTTPException(status_code=400, detail="corrected_type is required in body")
     updated = ReportService.update_report_classification(db=db, report_id=report_id, corrected_type=corrected_type)
     if not updated:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")

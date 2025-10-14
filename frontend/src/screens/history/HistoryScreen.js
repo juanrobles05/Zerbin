@@ -75,8 +75,8 @@ export function HistoryScreen({ navigation, route }) {
       {loading && <Text style={styles.text}>Cargando clasificación...</Text>}
       {classification && (
         <View style={styles.result}>
-          <Text style={styles.text}>Tipo de residuo: {classification.type}</Text>
-          <Text style={styles.text}>Confianza: {classification.confianza}%</Text>
+      <Text style={styles.text}>Tipo de residuo: {classification.type}</Text>
+      <Text style={styles.text}>Confianza: {classification.confidence}%</Text>
           <TouchableOpacity style={styles.fixButton} onPress={() => { setCurrentReportId(123); setSuggestedType(classification.type); setSelectorVisible(true); }}>
             <Text style={styles.fixText}>Corregir clasificación</Text>
           </TouchableOpacity>
