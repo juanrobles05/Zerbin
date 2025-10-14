@@ -33,15 +33,30 @@ class ReportResponse(ReportBase):
     confidence_score: Optional[float]
     status: str
     priority: int
+    priority_label: Optional[str] = None  # "Low", "Medium", "High"
     created_at: datetime
     updated_at: Optional[datetime]
     resolved_at: Optional[datetime]
 
     class Config:
         from_attributes = True
+    
+    @validator('priority_label', always=True)
+    def set_priority_label(cls, v, values):
+        """Genera automáticamente la etiqueta de prioridad"""
+        priority = values.get('priority', 1)
+        labels = {1: "Low", 2: "Medium", 3: "High"}
+        return labels.get(priority, "Low")
 
 class ReportListResponse(BaseModel):
     reports: list[ReportResponse]
     total: int
     page: int
     per_page: int
+
+class PriorityStatsResponse(BaseModel):
+    """Respuesta con estadísticas de prioridades"""
+    high: int = Field(..., description="Número de reportes con prioridad alta")
+    medium: int = Field(..., description="Número de reportes con prioridad media")
+    low: int = Field(..., description="Número de reportes con prioridad baja")
+    total: int = Field(..., description="Total de reportes activos")
