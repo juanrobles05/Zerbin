@@ -39,6 +39,41 @@ export const classify = {
   }
 };
 
+export const priorityService = {
+  // Obtener información de prioridad para un tipo de residuo
+  getPriorityInfo: async (wasteType) => {
+    try {
+      const response = await apiClient.get(`/priority/classifications/${wasteType}/priority`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting priority info:', error);
+      throw error;
+    }
+  },
+
+  // Obtener estadísticas de prioridad
+  getPriorityStats: async () => {
+    try {
+      const response = await apiClient.get('/priority/priority-stats');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting priority stats:', error);
+      throw error;
+    }
+  },
+
+  // Obtener reportes urgentes
+  getUrgentReports: async () => {
+    try {
+      const response = await apiClient.get('/reports/urgent');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting urgent reports:', error);
+      throw error;
+    }
+  }
+};
+
 export const reportService = {
   // Create report by sending image file + fields as multipart/form-data
   createReport: async (imageUri, location, description, classification) => {

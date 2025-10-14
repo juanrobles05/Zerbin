@@ -4,13 +4,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { THEME } from '../../styles/theme';
-import { reportService, classify } from '../../services/api/reportService';
+import { reportService, classify, priorityService } from '../../services/api/reportService';
 import { useLocation } from '../../hooks/useLocation';
+import { PriorityIndicator, DecompositionTime } from '../../components/common/PriorityIndicator';
 
 export function ReportScreen({ navigation, route }) {
   const imageUri = route?.params?.image;
   const initialLocation = route?.params?.location;
   const [classification, setClassification] = useState(null);
+  const [priorityInfo, setPriorityInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [description, setDescription] = useState('');
@@ -49,6 +51,17 @@ export function ReportScreen({ navigation, route }) {
     try {
       const data = await classify.image(uri);
       setClassification(data);
+      
+      // Obtener información de prioridad para el tipo de residuo clasificado
+      if (data.type) {
+        try {
+          const priority = await priorityService.getPriorityInfo(data.type);
+          setPriorityInfo(priority);
+        } catch (priorityError) {
+          console.error('Error obteniendo información de prioridad:', priorityError);
+          // No mostramos error al usuario, la prioridad es opcional
+        }
+      }
     } catch (error) {
       console.error('Error clasificando:', error);
       alert('Error al clasificar la imagen');
@@ -188,9 +201,48 @@ export function ReportScreen({ navigation, route }) {
         {loading && <Text style={styles.text}>Cargando clasificación...</Text>}
         {classification && (
           <View style={styles.detailsContainer}>
-            <Text style={styles.sectionTitle}>Clasificación</Text>
-            <Text>Tipo de residuo: {classification.type}</Text>
-            <Text>Confianza: {classification.confianza}%</Text>
+            <View style={styles.sectionHeader}>
+              <FontAwesome5 name="microscope" size={20} color={THEME.colors.primary} />
+              <Text style={styles.sectionTitle}>Clasificación Automática</Text>
+            </View>
+            
+            <View style={styles.classificationContainer}>
+              <View style={styles.classificationRow}>
+                <Text style={styles.classificationLabel}>Tipo de residuo:</Text>
+                <Text style={styles.classificationValue}>{classification.type}</Text>
+              </View>
+              
+              <View style={styles.classificationRow}>
+                <Text style={styles.classificationLabel}>Confianza de IA:</Text>
+                <Text style={styles.classificationValue}>{classification.confianza}%</Text>
+              </View>
+              
+              {priorityInfo && (
+                <>
+                  <View style={styles.prioritySection}>
+                    <Text style={styles.priorityTitle}>Nivel de Prioridad</Text>
+                    <View style={styles.priorityIndicator}>
+                      <PriorityIndicator 
+                        priority={priorityInfo.priority}
+                        size="large"
+                        isUrgent={priorityInfo.is_urgent}
+                      />
+                    </View>
+                    
+                    <DecompositionTime days={priorityInfo.decomposition_days} />
+                    
+                    {priorityInfo.is_urgent && (
+                      <View style={styles.urgentAlert}>
+                        <FontAwesome5 name="bell" size={16} color="#EF4444" />
+                        <Text style={styles.urgentAlertText}>
+                          ¡Residuo de descomposición rápida! Requiere atención prioritaria.
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </>
+              )}
+            </View>
           </View>
         )}
 
@@ -547,5 +599,75 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+  },
+  
+  // Nuevos estilos para clasificación y prioridad
+  classificationContainer: {
+    marginTop: 8,
+  },
+  classificationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#374151',
+  },
+  classificationLabel: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  classificationValue: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  prioritySection: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#374151',
+    borderRadius: 8,
+  },
+  priorityTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  priorityIndicator: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  decompositionText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  urgentAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  urgentAlertText: {
+    fontSize: 13,
+    color: '#EF4444',
+    fontWeight: '500',
+    marginLeft: 8,
+    flex: 1,
   },
 })
