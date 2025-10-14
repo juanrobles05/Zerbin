@@ -5,6 +5,7 @@ export const useLocation = () => {
   const [location, setLocation] = useState(null);
   const [permission, setPermission] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [manualLocation, setManualLocation] = useState(null);
   const watcherRef = useRef(null);
 
   const requestLocationPermission = async () => {
@@ -57,13 +58,29 @@ export const useLocation = () => {
     }
   };
 
+  const setManualSelectedLocation = (selectedLocation) => {
+    setManualLocation(selectedLocation);
+  };
+
+  const getActiveLocation = () => {
+    return manualLocation || location;
+  };
+
+  const clearManualLocation = () => {
+    setManualLocation(null);
+  };
+
   return {
     location,
+    manualLocation,
     permission,
     isLoading,
     requestLocationPermission,
     getCurrentLocation,
     startWatchingLocation,
-    stopWatchingLocation
+    stopWatchingLocation,
+    setManualSelectedLocation,
+    getActiveLocation,
+    clearManualLocation
   };
 };
