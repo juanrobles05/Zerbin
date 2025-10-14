@@ -4,7 +4,7 @@ const getApiUrl = () => {
     // Si estás en un emulador de Android, usa la IP de tu computadora
     if (Platform.OS === 'android') {
         // Reemplaza '192.168.1.100' con la dirección IPv4 de tu PC
-        return 'http://192.168.1.7:8000/api';
+        return 'http://192.168.0.102:8000/api';
     }
     // Para iOS y web, 'localhost' funciona
     return 'http://localhost:8000/api';
