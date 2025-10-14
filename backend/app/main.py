@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
+
 from app.core.config import settings
 from app.core.database import engine
 from app.models import base
@@ -29,6 +30,7 @@ app.add_middleware(
 
 # Incluir rutas de la API
 app.include_router(api_router, prefix="/api/v1")
+
 
 @app.get("/")
 async def root():
