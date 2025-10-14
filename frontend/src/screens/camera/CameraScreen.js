@@ -61,10 +61,20 @@ export const CameraScreen = ({ navigation, route }) => {
     if (!capturedImage) return;
     try {
       let locationToSend = photoLocation;
-      if (!locationToSend) locationToSend = await getCurrentLocation();
-      navigation.navigate('Report', { image: capturedImage.uri, location: locationToSend });
-    } catch {
-      Alert.alert('Error', 'No se pudo enviar el reporte');
+      if (!locationToSend) {
+        locationToSend = await getCurrentLocation();
+      }
+      navigation.navigate('Report', { 
+        image: capturedImage.uri, 
+        location: locationToSend 
+      });
+    } catch (error) {
+      console.error('Error sending report:', error);
+      // Navigate anyway, user can select location manually in the report screen
+      navigation.navigate('Report', { 
+        image: capturedImage.uri, 
+        location: null 
+      });
     }
   };
 
