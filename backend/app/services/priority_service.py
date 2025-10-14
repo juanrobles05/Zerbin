@@ -1,183 +1,144 @@
-from typing import Dict, Optional
-from sqlalchemy.orm import Session
-from app.models.waste_classification import WasteClassification
-from app.core.config import settings
-import logging
-
-logger = logging.getLogger(__name__)
+from datetime import datetime, timezone
+from typing import Optional
 
 class PriorityService:
     """
-    Servicio para determinar la prioridad de un residuo basado en su tiempo de descomposición.
+    Servicio para calcular la prioridad de reportes basándose en:
+    - Tipo de residuo
+    - Tamaño estimado (basado en confidence score y clasificación)
+    - Tiempo de exposición
     """
-    
-    # Mapeo de tiempo de descomposición a nivel de prioridad
-    PRIORITY_THRESHOLDS = {
-        7: 3,      # <= 7 días: alta prioridad
-        30: 2,     # <= 30 días: media prioridad
-        365: 1     # <= 365 días: baja prioridad
-    }
-    
-    # Datos por defecto para tipos de residuos comunes y su tiempo de descomposición
-    DEFAULT_WASTE_DATA = {
-        "organic": {
-            "decomposition_time_days": 7,
-            "description": "Residuos orgánicos que se descomponen rápidamente"
-        },
-        "food": {
-            "decomposition_time_days": 14,
-            "description": "Restos de comida y materiales alimentarios"
-        },
-        "paper": {
-            "decomposition_time_days": 90,
-            "description": "Papel y cartón"
-        },
-        "cardboard": {
-            "decomposition_time_days": 60,
-            "description": "Cartón y materiales similares"
-        },
-        "plastic": {
-            "decomposition_time_days": 1825,  # ~5 años
-            "description": "Plásticos diversos"
-        },
-        "glass": {
-            "decomposition_time_days": 365000,  # ~1000 años
-            "description": "Vidrio y cristal"
-        },
-        "metal": {
-            "decomposition_time_days": 18250,  # ~50 años
-            "description": "Metales diversos"
-        },
-        "trash": {
-            "decomposition_time_days": 365,  # Genérico - 1 año
-            "description": "Basura general no clasificada"
-        },
-        "recyclable": {
-            "decomposition_time_days": 365,  # Genérico - 1 año
-            "description": "Materiales reciclables mixtos"
-        }
+
+    WASTE_TYPE_WEIGHTS = {
+        "battery": 5,
+        "e-waste": 5,
+        "medical": 5,
+        "hazardous": 5,
+        "toxic": 5,
+        "glass": 4,
+        "metal": 4,
+        "electronics": 4,
+        "plastic": 3,
+        "cardboard": 3,
+        "paper": 2,
+        "organic": 3,
+        "food": 3,
+        "biological": 3,
+        "trash": 2,
+        "unknown": 2,
     }
 
-    def __init__(self, db: Session):
-        self.db = db
-        self._initialize_default_data()
+    SIZE_WEIGHTS = {
+        "small": 1,
+        "medium": 2,
+        "large": 3,
+    }
 
-    def _initialize_default_data(self):
-        """
-        Inicializa los datos por defecto en la base de datos si no existen.
-        """
-        try:
-            for waste_type, data in self.DEFAULT_WASTE_DATA.items():
-                existing = self.db.query(WasteClassification).filter(
-                    WasteClassification.waste_type == waste_type
-                ).first()
-                
-                if not existing:
-                    priority = self._calculate_priority_from_days(data["decomposition_time_days"])
-                    classification = WasteClassification(
-                        waste_type=waste_type,
-                        decomposition_time_days=data["decomposition_time_days"],
-                        priority_level=priority,
-                        description=data["description"]
-                    )
-                    self.db.add(classification)
-            
-            self.db.commit()
-        except Exception as e:
-            logger.error(f"Error inicializando datos de clasificación: {e}")
-            self.db.rollback()
+    @staticmethod
+    def estimate_size_from_confidence(confidence_score: float) -> str:
+        if confidence_score >= 80:
+            return "small"
+        elif confidence_score >= 60:
+            return "medium"
+        else:
+            return "large"
 
-    def _calculate_priority_from_days(self, decomposition_days: int) -> int:
-        """
-        Calcula el nivel de prioridad basado en el tiempo de descomposición.
-        """
-        for threshold_days, priority in sorted(self.PRIORITY_THRESHOLDS.items()):
-            if decomposition_days <= threshold_days:
-                return priority
-        return 1  # Prioridad baja por defecto
+    @staticmethod
+    def get_exposure_time_hours(created_at: datetime) -> float:
+        now = datetime.now(timezone.utc)
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        return (now - created_at).total_seconds() / 3600
 
-    def get_priority_for_waste_type(self, waste_type: str) -> Dict[str, any]:
-        """
-        Obtiene la prioridad para un tipo de residuo específico.
-        """
-        # Normalizar el tipo de residuo
-        normalized_type = waste_type.lower().strip()
-        
-        # Buscar en la base de datos
-        classification = self.db.query(WasteClassification).filter(
-            WasteClassification.waste_type == normalized_type
-        ).first()
-        
-        if classification:
-            return {
-                "priority": classification.priority_level,
-                "decomposition_days": classification.decomposition_time_days,
-                "is_urgent": classification.priority_level == 3,
-                "waste_type": classification.waste_type,
-                "description": classification.description
-            }
-        
-        # Si no se encuentra, usar datos por defecto o calcular basado en palabras clave
-        return self._get_fallback_priority(normalized_type)
+    @staticmethod
+    def calculate_exposure_weight(hours: float) -> int:
+        if hours < 24:
+            return 0
+        elif hours < 72:
+            return 1
+        elif hours < 168:
+            return 2
+        else:
+            return 3
 
-    def _get_fallback_priority(self, waste_type: str) -> Dict[str, any]:
-        """
-        Maneja casos donde el tipo de residuo no está en la base de datos.
-        """
-        # Palabras clave para identificar residuos orgánicos rápidamente descomponibles
-        organic_keywords = ["organic", "food", "compost", "fruit", "vegetable", "meat", "fish"]
-        
-        if any(keyword in waste_type for keyword in organic_keywords):
-            return {
-                "priority": 3,
-                "decomposition_days": 7,
-                "is_urgent": True,
-                "waste_type": waste_type,
-                "description": "Residuo orgánico de descomposición rápida"
-            }
-        
-        # Fallback por defecto
-        return {
-            "priority": 1,
-            "decomposition_days": 365,
-            "is_urgent": False,
-            "waste_type": waste_type,
-            "description": "Tipo de residuo no clasificado"
+    @staticmethod
+    def normalize_waste_type(waste_type: str) -> str:
+        if not waste_type:
+            return "unknown"
+        waste_type_lower = waste_type.lower().strip()
+        type_mappings = {
+            "batteries": "battery",
+            "e_waste": "e-waste",
+            "ewaste": "e-waste",
+            "electronic": "electronics",
+            "plastics": "plastic",
+            "papers": "paper",
+            "organics": "organic",
+            "foods": "food",
+            "glasses": "glass",
+            "metals": "metal",
+            "medicals": "medical",
         }
+        normalized = type_mappings.get(waste_type_lower, waste_type_lower)
+        if normalized not in PriorityService.WASTE_TYPE_WEIGHTS:
+            return "trash"
+        return normalized
 
-    def should_generate_alert(self, waste_type: str, confidence: float = 0.0) -> bool:
-        """
-        Determina si se debe generar una alerta urgente para el residuo.
-        """
-        priority_info = self.get_priority_for_waste_type(waste_type)
-        
-        # Generar alerta si es de alta prioridad y la confianza es suficiente
-        high_confidence = confidence >= settings.CONFIDENCE_THRESHOLD
-        is_urgent = priority_info["is_urgent"]
-        
-        return is_urgent and high_confidence
+    @staticmethod
+    def calculate_priority(
+        waste_type: Optional[str],
+        confidence_score: Optional[float],
+        created_at: datetime
+    ) -> tuple[int, str]:
+        score = 0
+        normalized_type = PriorityService.normalize_waste_type(waste_type)
+        type_weight = PriorityService.WASTE_TYPE_WEIGHTS.get(normalized_type, 2)
+        score += type_weight
 
-    def get_all_classifications(self) -> list:
-        """
-        Obtiene todas las clasificaciones de residuos disponibles.
-        """
-        return self.db.query(WasteClassification).all()
+        if confidence_score is not None:
+            size = PriorityService.estimate_size_from_confidence(confidence_score)
+            size_weight = PriorityService.SIZE_WEIGHTS.get(size, 1)
+            score += size_weight
+        else:
+            score += 2
 
-    def add_waste_classification(self, waste_type: str, decomposition_days: int, description: str = None) -> WasteClassification:
-        """
-        Añade una nueva clasificación de residuo.
-        """
-        priority = self._calculate_priority_from_days(decomposition_days)
-        
-        classification = WasteClassification(
-            waste_type=waste_type.lower().strip(),
-            decomposition_time_days=decomposition_days,
-            priority_level=priority,
-            description=description
+        exposure_hours = PriorityService.get_exposure_time_hours(created_at)
+        exposure_weight = PriorityService.calculate_exposure_weight(exposure_hours)
+        score += exposure_weight
+
+        if score >= 8:
+            return 3, "High"
+        elif score >= 5:
+            return 2, "Medium"
+        else:
+            return 1, "Low"
+
+    @staticmethod
+    def get_priority_details(
+        waste_type: Optional[str],
+        confidence_score: Optional[float],
+        created_at: datetime
+    ) -> dict:
+        normalized_type = PriorityService.normalize_waste_type(waste_type)
+        type_weight = PriorityService.WASTE_TYPE_WEIGHTS.get(normalized_type, 2)
+        size = PriorityService.estimate_size_from_confidence(
+            confidence_score if confidence_score else 70.0
         )
-        
-        self.db.add(classification)
-        self.db.commit()
-        self.db.refresh(classification)
-        
-        return classification
+        size_weight = PriorityService.SIZE_WEIGHTS.get(size, 1)
+        exposure_hours = PriorityService.get_exposure_time_hours(created_at)
+        exposure_weight = PriorityService.calculate_exposure_weight(exposure_hours)
+        total_score = type_weight + size_weight + exposure_weight
+        priority_level, urgency_label = PriorityService.calculate_priority(
+            waste_type, confidence_score, created_at
+        )
+        return {
+            "normalized_waste_type": normalized_type,
+            "type_weight": type_weight,
+            "estimated_size": size,
+            "size_weight": size_weight,
+            "exposure_hours": round(exposure_hours, 2),
+            "exposure_weight": exposure_weight,
+            "total_score": total_score,
+            "priority_level": priority_level,
+            "urgency_label": urgency_label,
+        }

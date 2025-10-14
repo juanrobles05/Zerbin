@@ -12,6 +12,7 @@ import { HistoryScreen } from './src/screens/history/HistoryScreen';
 import { ReportScreen } from './src/screens/reports/ReportScreen';
 import { LocationSelectorScreen } from './src/screens/location/LocationSelectorScreen';
 
+
 // Importar tema
 import { THEME } from './src/styles/theme';
 
