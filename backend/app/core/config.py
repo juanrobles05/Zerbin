@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     DEBUG: bool = config("DEBUG", default=False, cast=bool)
     PROJECT_NAME: str = "Zerbin API"
     VERSION: str = "1.0.0"
+    PORT: int = config("PORT", cast=int)
 
     # Supabase
     SUPABASE_URL: str = config("SUPABASE_URL")
@@ -32,7 +33,6 @@ class Settings(BaseSettings):
     IMAGE_QUALITY: int = config("IMAGE_QUALITY", default=80, cast=int)
     IMAGE_MAX_SIZE_MB: int = config("IMAGE_MAX_SIZE_MB", default=5, cast=int)
     IMAGE_ALLOWED_EXTENSIONS: List[str] = [".jpg", ".jpeg", ".png", ".webp"]
-
 
     # AI / ML
     AI_MODEL_ID: str = config("AI_MODEL_ID", default="prithivMLmods/Trash-Net")
