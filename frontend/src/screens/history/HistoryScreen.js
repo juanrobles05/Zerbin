@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import axios from 'axios';
-import { TouchableOpacity as RNTouchable } from 'react-native-gesture-handler';
 import WasteTypeSelector from '../../components/common/WasteTypeSelector';
 import { reportService } from '../../services/api/reportService';
 import { LinearGradient } from 'expo-linear-gradient';
