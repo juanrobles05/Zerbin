@@ -49,6 +49,7 @@ class ReportService:
             image_url=report_data.image_url,
             address=get_address_from_coords(report_data.latitude, report_data.longitude),
             waste_type=waste_type,
+            manual_classification=report_data.manual_classification,
             confidence_score=confidence_score,
             status="pending",
             priority=priority_level,
@@ -140,7 +141,7 @@ class ReportService:
             db.refresh(report)
         return report
 
-    # ✅ Agregado de juanPablo: corrección manual
+
     @staticmethod
     def update_report_classification(db, report_id, corrected_type: str):
         """Guarda la clasificación corregida manualmente por el usuario."""
@@ -153,7 +154,7 @@ class ReportService:
         db.refresh(report)
         return report
 
-    # ✅ De main: recálculo de prioridades y estadísticas
+
     @staticmethod
     def recalculate_priority(db, report_id):
         """Recalcula la prioridad de un reporte específico."""

@@ -14,6 +14,7 @@ from app.services.report_service import ReportService
 from app.services.image_service import ImageService
 from app.services.ai_service import AIService
 from app.services.priority_service import PriorityService
+import asyncio
 
 router = APIRouter()
 
@@ -25,6 +26,7 @@ async def create_report(
     longitude: float = Form(...),
     description: Optional[str] = Form(None),
     ai_classification: Optional[str] = Form(None),
+    manual_classification: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -53,7 +55,19 @@ async def create_report(
         except Exception:
             raise HTTPException(status_code=400, detail="ai_classification debe ser un JSON válido")
     else:
-        ai_result = AIService().classify_waste(file_bytes)
+        # classification can be CPU-bound; run in a thread to avoid blocking the loop
+        ai_service = AIService()
+        ai_result = await asyncio.to_thread(ai_service.classify_waste, file_bytes)
+
+    # parse manual_classification if provided; accept either JSON or plain string
+    manual_result = None
+    if manual_classification is not None:
+        # try to decode JSON, but if it's a plain string use it as-is
+        try:
+            manual_result = json.loads(manual_classification)
+        except Exception:
+            # not a JSON payload, store raw string (trim whitespace)
+            manual_result = str(manual_classification).strip()
 
     report_data = type('ReportData', (), {})()
     report_data.latitude = latitude
@@ -61,6 +75,7 @@ async def create_report(
     report_data.description = description
     report_data.image_url = public_url
     report_data.ai_classification = ai_result
+    report_data.manual_classification = manual_result
 
     created_report = await ReportService.create_report(db=db, report_data=report_data)
     return created_report
@@ -170,7 +185,6 @@ async def update_report_status(
     return updated_report
 
 
-# ✅ De juanPablo: corrección manual de clasificación
 @router.patch("/{report_id}/classification", response_model=ReportResponse)
 async def update_report_classification(
     report_id: int,
@@ -189,7 +203,6 @@ async def update_report_classification(
     return updated
 
 
-# ✅ De main: recálculo de prioridades
 @router.post("/{report_id}/recalculate-priority", response_model=ReportResponse)
 async def recalculate_report_priority(report_id: int, db: Session = Depends(get_db)):
     """Recalcular la prioridad de un reporte específico."""
