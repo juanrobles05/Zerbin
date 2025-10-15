@@ -63,6 +63,24 @@ export function ReportScreen({ navigation, route }) {
     }
   };
 
+// Fetch priority info for a given waste type and update state
+  const fetchPriorityInfo = async (wasteType) => {
+    if (!wasteType) return;
+    try {
+      const info = await priorityService.getPriorityInfo(wasteType);
+      setPriorityInfo(info);
+    } catch (err) {
+      console.warn('Could not fetch priority info for', wasteType, err);
+      setPriorityInfo(null);
+    }
+  };
+
+  // Whenever classification or manual selection changes, refresh priority info
+  useEffect(() => {
+    const selectedType = manualSelectedType || classification?.type;
+    if (selectedType) fetchPriorityInfo(selectedType);
+  }, [classification, manualSelectedType]);
+
   const getAddressFromLocation = async (location) => {
     if (!location?.coords) return;
     try {
@@ -268,21 +286,15 @@ export function ReportScreen({ navigation, route }) {
                 <Text style={styles.correctButtonText}>Corregir clasificación</Text>
               </TouchableOpacity>
 
-              {/* {priorityInfo && (
-                <View style={styles.prioritySection}>
-                  <Text style={styles.priorityTitle}>Nivel de Prioridad</Text>
-                  <PriorityIndicator priority={priorityInfo.priority} size="large" isUrgent={priorityInfo.is_urgent} />
-                  <DecompositionTime days={priorityInfo.decomposition_days} />
-                  {priorityInfo.is_urgent && (
-                    <View style={styles.urgentAlert}>
-                      <FontAwesome5 name="bell" size={16} color="#EF4444" />
-                      <Text style={styles.urgentAlertText}>
-                        ¡Residuo de descomposición rápida! Requiere atención prioritaria.
-                      </Text>
-                    </View>
-                  )}
+              {priorityInfo && (
+                <View style={styles.prioritySectionInline}>
+                  <View style={[styles.priorityBadge, priorityInfo.priority === 3 ? styles.priorityHigh : priorityInfo.priority === 2 ? styles.priorityMedium : styles.priorityLow]}>
+                    <FontAwesome5 name={priorityInfo.priority === 3 ? 'exclamation-triangle' : priorityInfo.priority === 2 ? 'clock' : 'check-circle'} size={12} color="#fff" />
+                    <Text style={styles.priorityBadgeText}>{priorityInfo.priority === 3 ? 'Alta' : priorityInfo.priority === 2 ? 'Media' : 'Baja'}</Text>
+                  </View>
+                  <Text style={styles.decompText}>{priorityInfo.decomposition_days} días</Text>
                 </View>
-              )} */}
+              )}
             </View>
           </View>
         )}
@@ -549,6 +561,40 @@ const styles = StyleSheet.create({
     color: THEME.colors.primary,
     fontWeight: '600',
     marginLeft: 6,
+  },
+
+  // Priority badge
+  prioritySectionInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  priorityBadgeText: {
+    color: '#fff',
+    fontWeight: '700',
+    marginLeft: 6,
+    fontSize: 12,
+  },
+  priorityHigh: {
+    backgroundColor: '#DC2626',
+  },
+  priorityMedium: {
+    backgroundColor: '#F59E0B',
+  },
+  priorityLow: {
+    backgroundColor: '#10B981',
+  },
+  decompText: {
+    marginLeft: 12,
+    color: THEME.colors.textSecondary,
+    fontSize: 12,
   },
 
   // Descripción

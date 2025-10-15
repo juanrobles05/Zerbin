@@ -58,7 +58,7 @@ export const priorityService = {
   // Obtener información de prioridad para un tipo de residuo
   getPriorityInfo: async (wasteType) => {
     try {
-      const response = await apiClient.get(`/priority/classifications/${wasteType}/priority`);
+  const response = await apiClient.get(`/v1/priority/classifications/${wasteType}/priority`);
       return response.data;
     } catch (error) {
       console.error('Error getting priority info:', error);
@@ -140,6 +140,27 @@ export const reportService = {
     } catch (error) {
       console.error('Error updating classification:', error);
       throw error;
+    }
+  }
+};
+
+// Convenience wrapper for priority endpoint with fallback handling
+export const priority = {
+  getPriorityForType: async (wasteType) => {
+    try {
+  const resp = await apiClient.get(`/v1/priority/classifications/${encodeURIComponent(wasteType)}/priority`);
+      return resp.data;
+    } catch (err) {
+      // If the priority endpoint fails (no DB or network), return a safe fallback
+      console.warn('Priority endpoint failed, returning fallback for', wasteType, err?.message || err);
+      // Fallback: low priority default
+      return {
+        priority: 1,
+        decomposition_days: 365,
+        is_urgent: false,
+        waste_type: wasteType,
+        description: 'fallback: priority service unavailable',
+      };
     }
   }
 };
