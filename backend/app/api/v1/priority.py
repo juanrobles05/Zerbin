@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
-from app.services.priority_service import PriorityService
 from app.models.waste_classification import WasteClassification
+from app.services.priority_service import PriorityService
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -30,19 +30,86 @@ class PriorityInfoResponse(BaseModel):
     waste_type: str
     description: str
 
+@router.get("/classifications/{waste_type}", response_model=WasteClassificationResponse)
+async def calculate_priority(waste_type: str, db: Session = Depends(get_db)):
+    """Calcular la prioridad para un tipo de residuo específico"""
+    # Try DB first, otherwise use PriorityService heuristic
+    wt = waste_type.lower().strip()
+    classification = None
+    try:
+        classification = db.query(WasteClassification).filter(WasteClassification.waste_type == wt).first()
+    except Exception:
+        classification = None
+
+    if classification:
+        return WasteClassificationResponse(**classification.__dict__)
+
+    # Fallback: compute heuristic info without DB
+    ps = PriorityService(db=None)
+    pinfo = ps.get_priority_for_waste_type(wt)
+    return WasteClassificationResponse(
+        id=0,
+        waste_type=pinfo.get("waste_type"),
+        decomposition_time_days=pinfo.get("decomposition_days"),
+        priority_level=pinfo.get("priority"),
+        description=pinfo.get("description"),
+    )
+
 @router.get("/classifications", response_model=List[WasteClassificationResponse])
 async def get_all_waste_classifications(db: Session = Depends(get_db)):
     """Obtener todas las clasificaciones de residuos disponibles"""
-    priority_service = PriorityService(db)
-    classifications = priority_service.get_all_classifications()
-    return classifications
+    classifications = []
+    try:
+        classifications = db.query(WasteClassification).all()
+    except Exception:
+        classifications = []
+
+    if classifications:
+        return [WasteClassificationResponse(**c.__dict__) for c in classifications]
+
+    # Fallback: return classifications derived from in-code weights
+    ps = PriorityService(db=None)
+    results = []
+    for wt, weight in ps.WASTE_TYPE_WEIGHTS.items():
+        p = ps.get_priority_for_waste_type(wt)
+        results.append(WasteClassificationResponse(
+            id=0,
+            waste_type=p.get("waste_type"),
+            decomposition_time_days=p.get("decomposition_days"),
+            priority_level=p.get("priority"),
+            description=p.get("description"),
+        ))
+    return results
 
 @router.get("/classifications/{waste_type}/priority", response_model=PriorityInfoResponse)
 async def get_priority_info(waste_type: str, db: Session = Depends(get_db)):
     """Obtener información de prioridad para un tipo de residuo específico"""
-    priority_service = PriorityService(db)
-    priority_info = priority_service.get_priority_for_waste_type(waste_type)
-    return PriorityInfoResponse(**priority_info)
+    wt = waste_type.lower().strip()
+    classification = None
+    try:
+        classification = db.query(WasteClassification).filter(WasteClassification.waste_type == wt).first()
+    except Exception:
+        classification = None
+
+    if classification:
+        return PriorityInfoResponse(
+            priority=classification.priority_level,
+            decomposition_days=classification.decomposition_time_days,
+            is_urgent=(classification.priority_level == 3),
+            waste_type=classification.waste_type,
+            description=classification.description or "",
+        )
+
+    # Fallback to heuristic
+    ps = PriorityService(db=None)
+    p = ps.get_priority_for_waste_type(wt)
+    return PriorityInfoResponse(
+        priority=p.get("priority"),
+        decomposition_days=p.get("decomposition_days"),
+        is_urgent=p.get("is_urgent"),
+        waste_type=p.get("waste_type"),
+        description=p.get("description") or "",
+    )
 
 @router.post("/classifications", response_model=WasteClassificationResponse)
 async def create_waste_classification(
@@ -50,28 +117,25 @@ async def create_waste_classification(
     db: Session = Depends(get_db)
 ):
     """Crear una nueva clasificación de residuo (para administradores)"""
-    priority_service = PriorityService(db)
-    
-    # Verificar si ya existe
-    existing = db.query(WasteClassification).filter(
-        WasteClassification.waste_type == classification_data.waste_type.lower().strip()
-    ).first()
-    
+    wt = classification_data.waste_type.lower().strip()
+    existing = db.query(WasteClassification).filter(WasteClassification.waste_type == wt).first()
     if existing:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"La clasificación para '{classification_data.waste_type}' ya existe"
-        )
-    
+        raise HTTPException(status_code=400, detail=f"Classification for '{classification_data.waste_type}' already exists")
+
     try:
-        new_classification = priority_service.add_waste_classification(
-            waste_type=classification_data.waste_type,
-            decomposition_days=classification_data.decomposition_time_days,
-            description=classification_data.description
+        new_classification = WasteClassification(
+            waste_type=wt,
+            decomposition_time_days=classification_data.decomposition_time_days,
+            priority_level=1 if classification_data.decomposition_time_days > 365 else (3 if classification_data.decomposition_time_days < 7 else 2),
+            description=classification_data.description,
         )
-        return new_classification
+        db.add(new_classification)
+        db.commit()
+        db.refresh(new_classification)
+        return WasteClassificationResponse(**new_classification.__dict__)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creando clasificación: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating classification: {str(e)}")
 
 @router.get("/priority-stats")
 async def get_priority_statistics(db: Session = Depends(get_db)):
