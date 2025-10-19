@@ -141,7 +141,7 @@ export const reportService = {
       console.error('Error updating classification:', error);
       throw error;
     }
-  }
+  } 
 };
 
 // Convenience wrapper for priority endpoint with fallback handling

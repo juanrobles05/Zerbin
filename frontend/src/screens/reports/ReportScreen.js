@@ -133,6 +133,7 @@ export function ReportScreen({ navigation, route }) {
     }
 
     setReportLoading(true);
+    // Después de enviar el reporte exitosamente:
     try {
       await reportService.createReport(
         imageUri,
@@ -142,39 +143,30 @@ export function ReportScreen({ navigation, route }) {
         manualSelectedType
       );
 
-      try {
-        // const response = await fetch("http://192.168.0.102:8000/api/v1/users/1/points");
-        // if (!response.ok) throw new Error('No points data');
-        // const data = await response.json();
-        // const lastReport = data?.history?.[data.history.length - 1];
-        // const pointsThisReport = lastReport ? lastReport.points : 0;
+      // 🔹 Obtener puntos desde backend
+      const response = await fetch("http://192.168.0.102:8000/api/v1/users/1/points");
+      if (!response.ok) throw new Error('No points data');
+      const data = await response.json();
 
-        // // If backend returns points data, show overlay. Otherwise treat as anonymous user.
-        // if (data && (data.points !== undefined || (data.history && data.history.length > 0))) {
-        //   setEarnedPoints(pointsThisReport);
-        //   setTotalPoints(data.points || 0);
-        //   setShowPointsOverlay(true);
-        // } else {
-          Alert.alert('Reporte enviado', 'Reporte enviado correctamente.', [
-            { text: 'OK', onPress: () => navigation.navigate('Home') }
-          ]);
-        // }
-      } catch (e) {
-        // anonymous/no-points flow: show brief confirmation and navigate home
-        Alert.alert('Reporte enviado', 'Reporte enviado correctamente.', [
-          { text: 'OK', onPress: () => navigation.navigate('Home') }
-        ]);
-      } finally {
-        // reset manual selection state after successful submit
-        setManualSelectedType(null);
-        setManualClassification(false);
-      }
-    } catch (error) {
-      console.error('Error al enviar el reporte:', error);
-      alert('Error al enviar el reporte');
+      // Último reporte
+      const lastReport = data?.history?.[data.history.length - 1];
+      const pointsThisReport = lastReport ? lastReport.points : 0;
+
+      // 🔹 Mostrar overlay con puntos
+      setEarnedPoints(pointsThisReport);
+      setTotalPoints(data.points || 0);
+      setShowPointsOverlay(true);
+
+    } catch (e) {
+      // Si no hay sistema de puntos → fallback al Alert existente
+      Alert.alert('Reporte enviado', 'Reporte enviado correctamente.', [
+        { text: 'OK', onPress: () => navigation.navigate('Home') }
+      ]);
     } finally {
-      setReportLoading(false);
+      setManualSelectedType(null);
+      setManualClassification(false);
     }
+
   };
 
   return (
