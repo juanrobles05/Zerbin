@@ -4,7 +4,7 @@ from typing import List
 from app.core.database import get_db
 from app.models.waste_classification import WasteClassification
 from app.services.priority_service import PriorityService
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 router = APIRouter()
 
@@ -15,8 +15,7 @@ class WasteClassificationResponse(BaseModel):
     priority_level: int
     description: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class WasteClassificationCreate(BaseModel):
     waste_type: str
@@ -141,14 +140,14 @@ async def create_waste_classification(
 async def get_priority_statistics(db: Session = Depends(get_db)):
     """Obtener estadísticas de prioridad de reportes"""
     from app.models.report import Report
-    
+
     # Contar reportes por prioridad
     high_priority = db.query(Report).filter(Report.priority == 3, Report.status == "pending").count()
     medium_priority = db.query(Report).filter(Report.priority == 2, Report.status == "pending").count()
     low_priority = db.query(Report).filter(Report.priority == 1, Report.status == "pending").count()
-    
+
     total_pending = high_priority + medium_priority + low_priority
-    
+
     return {
         "pending_reports": {
             "high_priority": high_priority,
@@ -159,7 +158,7 @@ async def get_priority_statistics(db: Session = Depends(get_db)):
         "urgent_threshold": 3,
         "priority_levels": {
             "1": "Baja - Mayor a 1 año de descomposición",
-            "2": "Media - Entre 1 mes y 1 año de descomposición", 
+            "2": "Media - Entre 1 mes y 1 año de descomposición",
             "3": "Alta - Menos de 1 semana de descomposición"
         }
     }
