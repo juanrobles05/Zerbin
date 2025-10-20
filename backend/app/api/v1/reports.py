@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body
 from sqlalchemy.orm import Session
 from typing import Optional
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 import json
 from app.core.database import get_db
 from app.schemas.report import (
@@ -61,7 +61,7 @@ async def create_report(
 
     # parse manual_classification if provided; accept either JSON or plain string
     manual_result = None
-    if manual_classification is not None:
+    if manual_classification:
         # try to decode JSON, but if it's a plain string use it as-is
         try:
             manual_result = json.loads(manual_classification)

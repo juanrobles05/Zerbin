@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from datetime import datetime
 from typing import Optional
 
@@ -18,7 +18,7 @@ class ReportUpdate(BaseModel):
     manual_classification: Optional[str] = None
     status: Optional[str] = None
 
-    @validator('status')
+    @field_validator('status')
     def validate_status(cls, v):
         allowed_statuses = ['pending', 'in_progress', 'resolved']
         if v and v not in allowed_statuses:
@@ -38,10 +38,9 @@ class ReportResponse(ReportBase):
     updated_at: Optional[datetime]
     resolved_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
-    
-    @validator('priority_label', always=True)
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator('priority_label', mode="before")
     def set_priority_label(cls, v, values):
         """Genera automáticamente la etiqueta de prioridad"""
         priority = values.get('priority', 1)
