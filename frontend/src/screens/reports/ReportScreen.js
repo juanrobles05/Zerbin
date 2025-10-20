@@ -144,19 +144,16 @@ export function ReportScreen({ navigation, route }) {
       );
 
       // 🔹 Obtener puntos desde backend
-      const response = await fetch("http://192.168.0.102:8000/api/v1/users/1/points");
-      if (!response.ok) throw new Error('No points data');
-      const data = await response.json();
+      const data = await reportService.getUserPoints(1);
 
-      // Último reporte
+            // Último reporte
       const lastReport = data?.history?.[data.history.length - 1];
       const pointsThisReport = lastReport ? lastReport.points : 0;
 
-      // 🔹 Mostrar overlay con puntos
+      // Mostrar overlay con puntos
       setEarnedPoints(pointsThisReport);
       setTotalPoints(data.points || 0);
       setShowPointsOverlay(true);
-
     } catch (e) {
       // Si no hay sistema de puntos → fallback al Alert existente
       Alert.alert('Reporte enviado', 'Reporte enviado correctamente.', [
