@@ -141,8 +141,19 @@ export const reportService = {
       console.error('Error updating classification:', error);
       throw error;
     }
-  }
+  }, 
+
+  getUserPoints: async (userId = 1) => {
+    try {
+      const resp = await apiClient.get(API_CONFIG.ENDPOINTS.POINTS(userId));
+      return resp.data;
+    } catch (err) {
+      console.error('Error fetching user points:', err);
+      throw err;
+    }
+  },
 };
+
 
 // Convenience wrapper for priority endpoint with fallback handling
 export const priority = {
