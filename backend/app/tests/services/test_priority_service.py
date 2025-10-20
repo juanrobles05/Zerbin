@@ -6,7 +6,7 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from app.services.priority_service import PriorityService
 from app.models.waste_classification import WasteClassification
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
 
 class TestPriorityServiceUnit:
@@ -107,7 +107,7 @@ class TestPriorityServiceUnit:
 
         assert result["priority"] == 3
         assert result["decomposition_days"] == 7
-        assert result["is_urgent"] == True
+        assert result["is_urgent"] is True
 
     def test_fallback_when_db_unavailable(self):
         """

@@ -3,8 +3,6 @@ from PIL import Image
 import io
 import threading
 from app.core.config import settings
-from time import time
-
 
 class AIService:
     """Servicio de clasificación IA (carga perezosa y segura para hilos)."""

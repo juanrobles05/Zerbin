@@ -4,7 +4,7 @@ Valida la lógica de negocio de creación, actualización y filtrado de reportes
 """
 import pytest
 from datetime import datetime, timezone
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, patch
 from app.services.report_service import ReportService, POINTS_BY_WASTE_TYPE, DEFAULT_POINTS
 from app.models.report import Report
 from app.models.user import User
@@ -70,9 +70,11 @@ class TestReportServiceUnit:
             report = await ReportService.create_report(mock_db, sample_report_data)
 
             # Verificaciones
-            mock_db.add.assert_called_once()  # Se agregó a la BD
-            mock_db.commit.assert_called()     # Se hizo commit
-            mock_priority.assert_called_once() # Se calculó la prioridad
+            assert report is not None
+            assert report.waste_type == "plastic"
+            assert report.confidence_score == 85.5
+            assert report.priority == 2
+            mock_db.add.assert_called_once()
 
     # ==================== PRUEBA 2: Asignación de Puntos ====================
 

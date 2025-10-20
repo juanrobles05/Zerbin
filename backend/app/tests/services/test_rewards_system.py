@@ -5,9 +5,7 @@ Valida asignación, acumulación y consistencia de puntos.
 import pytest
 from app.services.report_service import POINTS_BY_WASTE_TYPE, DEFAULT_POINTS
 from app.models.user import User
-from app.models.report import Report
 from unittest.mock import Mock
-from datetime import datetime, timezone
 
 
 class TestRewardsSystem:

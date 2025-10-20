@@ -252,7 +252,6 @@ class TestReportIntegration:
         )
 
         report_id = create_response.json()["id"]
-        original_waste_type = create_response.json()["waste_type"]
 
         # Corregir clasificación
         update_response = client.patch(
@@ -285,7 +284,6 @@ class TestReportIntegration:
         )
 
         report_id = create_response.json()["id"]
-        original_priority = create_response.json()["priority"]
 
         # Recalcular prioridad
         recalc_response = client.post(f"/api/v1/reports/{report_id}/recalculate-priority")
