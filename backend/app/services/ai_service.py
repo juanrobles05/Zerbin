@@ -11,21 +11,33 @@ class AIService:
     _pipeline = None  # modelo compartido entre instancias
 
     def __init__(self):
-        # Inicialización perezosa (solo una vez)
-        with self._lock:
-            if AIService._pipeline is None:
-                print("⚙️ Cargando modelo IA (solo una vez)...")
-                AIService._pipeline = pipeline(
+        # No cargar el modelo en la inicialización para permitir lazy-loading en tests.
+        # Cada instancia mantiene una bandera indicando si "ha solicitado" el pipeline.
+        self._owns_pipeline = False
+
+    @property
+    def classifier(self):
+        """Retorna el pipeline solo si esta instancia ya lo 'posee' (lo pidió)."""
+        return AIService._pipeline if self._owns_pipeline else None
+
+    @classmethod
+    def _ensure_pipeline_loaded(cls, instance: "AIService"):
+        """Carga el pipeline (una vez) y marca la instancia como poseedora."""
+        # Fast path: si ya está cargado, simplemente marcar la instancia
+        if cls._pipeline is not None:
+            instance._owns_pipeline = True
+            return
+
+        with cls._lock:
+            if cls._pipeline is None:
+                cls._pipeline = pipeline(
                     "image-classification",
                     model=settings.AI_MODEL_ID,
                     device="cpu",
                     use_fast=True
                 )
-
-    @property
-    def classifier(self):
-        """Retorna el pipeline ya cargado (thread-safe)."""
-        return self._pipeline
+            # marcar la instancia que solicitó la carga
+            instance._owns_pipeline = True
 
     def classify_waste(self, image_data: bytes):
         """Clasifica una imagen de residuo y devuelve tipo y confianza."""
@@ -34,8 +46,11 @@ class AIService:
         except Exception as e:
             raise ValueError("Imagen inválida o corrupta") from e
 
+        # Lazy-load seguro para hilos: cargar solo cuando se necesita y marcar la instancia.
+        AIService._ensure_pipeline_loaded(self)
+
         if self.classifier is None:
-            raise RuntimeError("El modelo IA no está inicializado correctamente")
+            raise RuntimeError("El modelo IA no se pudo inicializar")
 
         # Realiza la clasificación
         results = self.classifier(img)

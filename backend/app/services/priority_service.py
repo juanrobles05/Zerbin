@@ -62,7 +62,7 @@ class PriorityService:
             return 3
 
     @staticmethod
-    def normalize_waste_type(waste_type: str) -> str:
+    def normalize_waste_type(waste_type: Optional[str]) -> str:
         if not waste_type:
             return "unknown"
         waste_type_lower = waste_type.lower().strip()

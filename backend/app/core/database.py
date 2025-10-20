@@ -5,6 +5,7 @@ from app.core.config import settings
 # Use the single shared Base from app.models.base so all models
 # register on the same metadata. Some tests and modules call
 # Base.metadata.create_all(bind=engine) expecting this behaviour.
+from app.models.base import Base
 
 engine = create_engine(
     settings.DATABASE_URL,
