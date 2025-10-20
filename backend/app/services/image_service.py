@@ -1,6 +1,7 @@
 from PIL import Image
 import io
-import uuid, time
+import uuid
+import time
 import tempfile
 import os
 from app.core.supabase_client import supabase
