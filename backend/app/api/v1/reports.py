@@ -4,6 +4,8 @@ from typing import Optional
 from pydantic import ValidationError
 import json
 from app.core.database import get_db
+from app.core.security import get_current_user_optional
+from app.models.user import User
 from app.schemas.report import (
     ReportResponse,
     ReportListResponse,
@@ -27,14 +29,22 @@ async def create_report(
     description: Optional[str] = Form(None),
     ai_classification: Optional[str] = Form(None),
     manual_classification: Optional[str] = Form(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """
     Crear un nuevo reporte de residuo con imagen.
+    
+    **Soporta reportes autenticados y anónimos:**
+    - Si el usuario está autenticado (token JWT válido), se asocia el reporte con su cuenta y gana puntos
+    - Si no hay token o es inválido, se crea un reporte anónimo (user_id = None)
+    
+    **Pasos:**
     1. Sube la imagen a Supabase
     2. Clasifica la imagen con IA
     3. Calcula la prioridad automáticamente
     4. Guarda el reporte en la base de datos
+    5. Asigna puntos al usuario si está autenticado
     """
     file_bytes = await image.read()
     image_filename = image.filename
@@ -77,7 +87,14 @@ async def create_report(
     report_data.ai_classification = ai_result
     report_data.manual_classification = manual_result
 
-    created_report = await ReportService.create_report(db=db, report_data=report_data)
+    # Pasar user_id si el usuario está autenticado, None si es anónimo
+    user_id = current_user.id if current_user else None
+    created_report = await ReportService.create_report(
+        db=db, 
+        report_data=report_data,
+        user_id=user_id
+    )
+    
     return created_report
 
 
