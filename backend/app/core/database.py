@@ -13,16 +13,12 @@ from app.models.base import Base
 
 logger = logging.getLogger(__name__)
 
-# Helper to create engine with SQLite-specific args when needed
 def _create_engine_from_url(db_url: str):
     if db_url.startswith("sqlite:"):
-        # For sqlite, allow check_same_thread for local dev
         return create_engine(db_url, connect_args={"check_same_thread": False})
     return create_engine(db_url, pool_pre_ping=True, pool_recycle=3600)
 
 
-# Try to use configured DATABASE_URL. If connection fails (e.g. remote DB creds
-# invalid or network issues), fall back to a local sqlite file for development.
 database_url = getattr(settings, 'DATABASE_URL', None) or os.getenv('DATABASE_URL')
 if not database_url:
     logger.warning("No DATABASE_URL configured; falling back to local sqlite database './dev.db' for development.")

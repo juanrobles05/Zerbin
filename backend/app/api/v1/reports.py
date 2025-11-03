@@ -29,13 +29,6 @@ async def create_report(
     manual_classification: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    """
-    Crear un nuevo reporte de residuo con imagen.
-    1. Sube la imagen a Supabase
-    2. Clasifica la imagen con IA
-    3. Calcula la prioridad automáticamente
-    4. Guarda el reporte en la base de datos
-    """
     file_bytes = await image.read()
     image_filename = image.filename
 
@@ -111,11 +104,6 @@ async def get_user_reports(
     status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    """
-    Obtener todos los reportes de un usuario específico.
-    Ordenados cronológicamente (más recientes primero).
-    Permite filtrar por estado: pending, in_progress, resolved.
-    """
     reports, total = ReportService.get_user_reports(
         db=db, user_id=user_id, skip=skip, limit=limit, status=status
     )

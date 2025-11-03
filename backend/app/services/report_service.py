@@ -111,19 +111,13 @@ class ReportService:
 
     @staticmethod
     def get_user_reports(db, user_id, skip=0, limit=50, status=None):
-        """
-        Obtiene reportes de un usuario específico, ordenados cronológicamente.
-        Permite filtrar por estado.
-        """
         query = db.query(Report).filter(Report.user_id == user_id)
         
         if status:
-            # Map 'collected' to 'resolved' for backwards compatibility
             if status == 'collected':
                 status = 'resolved'
             query = query.filter(Report.status == status)
         
-        # Order by most recent first (chronological descending)
         query = query.order_by(Report.created_at.desc())
         total = query.count()
         reports = query.offset(skip).limit(limit).all()

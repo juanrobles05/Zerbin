@@ -4,10 +4,6 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { THEME } from '../../styles/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 
-/**
- * ReportCard Component
- * Displays a single report with its status, date, type, and location
- */
 export default function ReportCard({ report, onPress }) {
   const formatDate = (dateString) => {
     const date = new Date(dateString);

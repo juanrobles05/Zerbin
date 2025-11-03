@@ -3,10 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { FontAwesome5 } from '@expo/vector-icons';
 import { THEME } from '../../styles/theme';
 
-/**
- * StatusFilter Component
- * Allows users to filter reports by status: all, pending, in_progress, or resolved (collected)
- */
 export default function StatusFilter({ selectedStatus, onStatusChange }) {
   const filters = [
     {

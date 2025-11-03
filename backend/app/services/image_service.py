@@ -52,27 +52,21 @@ class ImageService:
         try:
             response = supabase.storage.from_(bucket).upload(file_name, temp_file.name)
         except Exception as e:
-            # If Supabase is unreachable (network/DNS) or misconfigured, fallback to
-            # saving the file locally under ./uploads and return a local public URL.
             logger.warning("Supabase upload failed (%s). Falling back to local storage.", e)
             try:
-                # ensure uploads directory exists (backend mounts it at /uploads)
                 base_upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'uploads'))
                 os.makedirs(base_upload_dir, exist_ok=True)
                 dest_path = os.path.join(base_upload_dir, file_name)
-                # copy compressed temp file to uploads
                 shutil.copyfile(temp_file.name, dest_path)
                 public_url = f"{settings.BACKEND_URL.rstrip('/')}/uploads/{file_name}"
                 return {"public_url": public_url} if False else public_url
             finally:
                 temp_file.close()
-                # keep the original temp file removed
                 try:
                     os.remove(temp_file.name)
                 except Exception:
                     pass
         else:
-            # Clean up temp file when supabase upload succeeded
             try:
                 temp_file.close()
                 os.remove(temp_file.name)
@@ -85,7 +79,6 @@ class ImageService:
 
         # Obtener la URL pública de la imagen subida
         public_url_resp = supabase.storage.from_(bucket).get_public_url(file_name)
-        # The client may return a dict like {'public_url': 'https://...'} or a string
         if isinstance(public_url_resp, dict):
             return public_url_resp.get('public_url')
         return public_url_resp
