@@ -8,8 +8,6 @@ from app.core.database import engine
 from app.models import base
 from app.api.v1.api import api_router
 from app.services.ai_service import AIService
-from fastapi.staticfiles import StaticFiles
-import os
 
 # Crear tablas
 base.Base.metadata.create_all(bind=engine)
@@ -21,12 +19,6 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
-
-# Ensure uploads directory exists and mount it so local files are served at /uploads
-uploads_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'uploads')
-uploads_dir = os.path.abspath(uploads_dir)
-os.makedirs(uploads_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 async def startup_event():
     print("Iniciando la aplicación Zerbin API...")

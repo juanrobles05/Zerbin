@@ -34,9 +34,6 @@ class Settings(BaseSettings):
     AI_MODEL_ID: str = "prithivMLmods/Trash-Net"
     CONFIDENCE_THRESHOLD: float = 0.7
 
-    # Local backend URL
-    BACKEND_URL: str = "http://localhost:8000"
-
     # Notificaciones
     ENABLE_NOTIFICATIONS: bool = True
 
