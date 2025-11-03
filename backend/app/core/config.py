@@ -1,12 +1,5 @@
 from typing import List
-
-try:
-    from pydantic_settings import BaseSettings, SettingsConfigDict
-except ModuleNotFoundError:
-    from pydantic import BaseSettings
-
-    def SettingsConfigDict(*args, **kwargs):
-        return dict(*args, **kwargs)
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
