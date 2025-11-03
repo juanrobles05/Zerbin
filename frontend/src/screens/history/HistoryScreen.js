@@ -1,101 +1,261 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import axios from 'axios';
-import WasteTypeSelector from '../../components/common/WasteTypeSelector';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  RefreshControl, 
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert
+} from 'react-native';
 import { reportService } from '../../services/api/reportService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { THEME } from '../../styles/theme';
+import ReportCard from '../../components/reports/ReportCard';
+import StatusFilter from '../../components/reports/StatusFilter';
 
+/**
+ * HistoryScreen - User Dashboard
+ * Displays a chronological list of all user reports with filtering capabilities
+ */
 export function HistoryScreen({ navigation, route }) {
-  const [imageUri, setImageUri] = useState(null);
-  const [classification, setClassification] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [selectorVisible, setSelectorVisible] = useState(false);
-  const [currentReportId, setCurrentReportId] = useState(null);
-  const [suggestedType, setSuggestedType] = useState(null);
+  // State management
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [totalReports, setTotalReports] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => {
-    if (route?.params?.imageUri) {
-      setImageUri(route.params.imageUri);
-      classifyImage(route.params.imageUri);
-      // Limpia el parámetro para evitar reprocesar
-      navigation.setParams({ imageUri: undefined });
-    }
-  }, [route?.params?.imageUri]);
+  // TODO: Replace with actual user ID from authentication
+  const userId = 1;
 
-  const handleOpenCamera = () => {
-    // Navega a CameraScreen y espera el resultado
-    navigation.navigate('Camera', { from: 'Reports' });
-  };
-
-  const handlePhotoTaken = (uri) => {
-    setImageUri(uri);
-    classifyImage(uri);
-  };
-
-  const classifyImage = async (uri) => {
-    setLoading(true);
-    let formData = new FormData();
-    formData.append('image', {
-      uri,
-      name: 'waste.jpg',
-      type: 'image/jpeg',
-    });
-
+  /**
+   * Fetch user reports from the API
+   */
+  const fetchReports = useCallback(async (page = 1, status = 'all', append = false) => {
     try {
-      const response = await axios.post('http://localhost:8000/api/v1/classify', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setClassification(response.data);
+      if (page === 1) {
+        setLoading(true);
+      }
+
+      const statusParam = status === 'all' ? null : status;
+      const response = await reportService.getUserReports(userId, statusParam, page, 20);
+
+      if (response) {
+        const newReports = response.reports || [];
+        
+        if (append) {
+          setReports(prev => [...prev, ...newReports]);
+        } else {
+          setReports(newReports);
+        }
+
+        setTotalReports(response.total || 0);
+        setHasMore(newReports.length === 20); // If we got a full page, there might be more
+      }
     } catch (error) {
-      console.error('Error clasificando:', error);
-      alert('Error al clasificar la imagen');
+      console.error('Error fetching reports:', error);
+      Alert.alert(
+        'Error',
+        'No se pudieron cargar los reportes. Por favor, intenta de nuevo.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
+  }, [userId]);
+
+  /**
+   * Initial load
+   */
+  useEffect(() => {
+    fetchReports(1, selectedStatus);
+  }, [selectedStatus]);
+
+  /**
+   * Refresh on pull-to-refresh
+   */
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setCurrentPage(1);
+    fetchReports(1, selectedStatus);
+  }, [selectedStatus, fetchReports]);
+
+  /**
+   * Handle status filter change
+   */
+  const handleStatusChange = (status) => {
+    setSelectedStatus(status);
+    setCurrentPage(1);
+    setReports([]);
+  };
+
+  /**
+   * Handle report card press - navigate to detail view
+   */
+  const handleReportPress = (report) => {
+    // TODO: Navigate to report detail screen
+    Alert.alert(
+      'Detalle del Reporte',
+      `ID: ${report.id}\nTipo: ${report.waste_type}\nEstado: ${report.status}`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  /**
+   * Navigate to camera to create new report
+   */
+  const handleCreateReport = () => {
+    navigation.navigate('Camera', { from: 'History' });
+  };
+
+  /**
+   * Load more reports (pagination)
+   */
+  const loadMore = () => {
+    if (!loading && hasMore) {
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      fetchReports(nextPage, selectedStatus, true);
+    }
+  };
+
+  /**
+   * Render individual report item
+   */
+  const renderReportItem = ({ item }) => (
+    <ReportCard report={item} onPress={handleReportPress} />
+  );
+
+  /**
+   * Render empty state
+   */
+  const renderEmptyState = () => {
+    if (loading) return null;
+
+    const emptyMessages = {
+      all: {
+        icon: 'inbox',
+        title: 'No hay reportes',
+        subtitle: '¡Comienza a reportar residuos ahora!',
+      },
+      pending: {
+        icon: 'clock',
+        title: 'No hay reportes pendientes',
+        subtitle: 'Todos tus reportes están siendo procesados o ya fueron recolectados.',
+      },
+      in_progress: {
+        icon: 'truck',
+        title: 'No hay reportes en progreso',
+        subtitle: 'No hay reportes en proceso de recolección en este momento.',
+      },
+      resolved: {
+        icon: 'check-circle',
+        title: 'No hay reportes recolectados',
+        subtitle: 'Aún no tienes reportes completados.',
+      },
+    };
+
+    const message = emptyMessages[selectedStatus] || emptyMessages.all;
+
+    return (
+      <View style={styles.emptyContainer}>
+        <FontAwesome5 name={message.icon} size={64} color={THEME.colors.textSecondary} />
+        <Text style={styles.emptyTitle}>{message.title}</Text>
+        <Text style={styles.emptySubtitle}>{message.subtitle}</Text>
+        <TouchableOpacity onPress={handleCreateReport}>
+          <LinearGradient
+            colors={[THEME.colors.primary, '#059669', '#047857']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.emptyButton}
+          >
+            <FontAwesome5 name="camera" size={20} color={THEME.colors.white} />
+            <Text style={styles.emptyButtonText}>Crear Reporte</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  /**
+   * Render footer (loading indicator for pagination)
+   */
+  const renderFooter = () => {
+    if (!hasMore || reports.length === 0) return null;
+    
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={THEME.colors.primary} />
+      </View>
+    );
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>¡Bienvenido a la pantalla de reportes!</Text>
-      <Text style={styles.subtext}>Aquí verás un listado de tus reportes de residuos.</Text>
-      <TouchableOpacity style={styles.cameraButtonContainer}  onPress={handleOpenCamera}>
-        <LinearGradient
-          colors={["#10b981", "#059669", "#047857"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.cameraButton}
-        >
-          <FontAwesome5 name="camera" size={30} color={THEME.colors.white} />
-          <Text style={styles.cameraButtonText}>Tomar Foto</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-      {imageUri && <Image source={{ uri: imageUri }} style={styles.image} />}
-      {loading && <Text style={styles.text}>Cargando clasificación...</Text>}
-      {classification && (
-        <View style={styles.result}>
-      <Text style={styles.text}>Tipo de residuo: {classification.type}</Text>
-      <Text style={styles.text}>Confianza: {classification.confidence}%</Text>
-          <TouchableOpacity style={styles.fixButton} onPress={() => { setCurrentReportId(123); setSuggestedType(classification.type); setSelectorVisible(true); }}>
-            <Text style={styles.fixText}>Corregir clasificación</Text>
-          </TouchableOpacity>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>Mis Reportes</Text>
+          <Text style={styles.headerSubtitle}>
+            {totalReports} {totalReports === 1 ? 'reporte' : 'reportes'} en total
+          </Text>
         </View>
-      )}
-      <WasteTypeSelector
-        visible={selectorVisible}
-        suggested={suggestedType}
-        onClose={() => setSelectorVisible(false)}
-        onSelect={async (type) => {
-          try {
-            // Use a real reportId; here we used 123 as placeholder — in production use report.id
-            await reportService.updateReportClassification(currentReportId, type);
-            alert('Clasificación corregida a ' + type);
-          } catch (e) {
-            console.error(e);
-            alert('Error al guardar la corrección');
-          }
-        }}
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={handleCreateReport}
+        >
+          <LinearGradient
+            colors={[THEME.colors.primary, '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addButtonGradient}
+          >
+            <FontAwesome5 name="plus" size={20} color={THEME.colors.white} />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      {/* Status Filter */}
+      <StatusFilter 
+        selectedStatus={selectedStatus}
+        onStatusChange={handleStatusChange}
       />
+
+      {/* Reports List */}
+      {loading && reports.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <Text style={styles.loadingText}>Cargando reportes...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={reports}
+          renderItem={renderReportItem}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={[
+            styles.listContent,
+            reports.length === 0 && styles.listContentEmpty
+          ]}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              colors={[THEME.colors.primary]}
+              tintColor={THEME.colors.primary}
+            />
+          }
+          ListEmptyComponent={renderEmptyState}
+          ListFooterComponent={renderFooter}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+        />
+      )}
     </View>
   );
 }
@@ -103,47 +263,92 @@ export function HistoryScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: THEME.colors.background || '#F9FAFB',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: THEME.colors.white,
+    ...THEME.shadows?.small,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: THEME.colors.text,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  addButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  addButtonGradient: {
+    width: 50,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    borderRadius: 25,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
-  text: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtext: {
+  loadingText: {
+    marginTop: 12,
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
+    color: THEME.colors.textSecondary,
   },
-  image: {
-    width: 200,
-    height: 200,
-    marginVertical: 10,
+  listContent: {
+    paddingVertical: 8,
   },
-  result: {
-    marginTop: 10,
+  listContentEmpty: {
+    flexGrow: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: 40,
   },
-  cameraButton: {
-    backgroundColor: THEME.colors.primary,
-    borderRadius: 50,
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: THEME.colors.text,
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 30
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginTop: 24,
+    gap: 8,
   },
-  cameraButtonText: {
+  emptyButtonText: {
     color: THEME.colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 10
+    fontSize: 16,
+    fontWeight: '600',
   },
-  cameraContainer: {
-    flex: 1
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
 });
