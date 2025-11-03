@@ -1,28 +1,39 @@
 export const COLORS = {
-  primary: '#2E8B57', // Un verde oscuro que se usa para botones y el logo
-  primaryLight: '#3CB371', // Un verde más claro para elementos activos
-  secondary: '#FF8C00', // Un naranja para estados de advertencia o acento
+  // Colores principales
+  primary: '#10b981', // Green primary color
+  primaryLight: '#34d399', // Light green for active elements
+  primaryDark: '#059669', // Dark green
+  secondary: '#FF8C00', // Orange for warnings or accent
 
-  background: '#3A4750', // Un gris oscuro para el fondo de las pantallas
-  cardBackground: '#4B5563',
-  surface: '#4E5B66', // Un gris un poco más claro para las tarjetas y contenedores
-  card: '#4E5B66', // Un gris un poco más claro para las tarjetas y contenedores
+  // Fondos y superficies
+  background: '#F9FAFB', // Light background for screens
+  cardBackground: '#FFFFFF', // White for cards
+  surface: '#FFFFFF', // White for surfaces
+  card: '#FFFFFF', // White for cards
   white: '#FFFFFF',
   black: '#000000',
-  textPrimary: '#FFFFFF', // Blanco para texto principal
-  textSecondary: '#B0BEC5', // Gris claro para texto secundario
-  textTertiary: '#90A4AE', // Gris más claro para texto terciario
-  success: '#32CD32', // Un verde brillante para éxito
-  error: '#FF6347', // Un rojo para errores o pendientes
-  danger: '#FF6347', // Alias para error (usado en HomeScreen)
-  warning: '#FFD700', // Un amarillo para advertencias
-  divider: '#607D8B', // Un gris azulado para separadores
-  border: '#607D8B', // Border color
-  disabled: '#9E9E9E', // Disabled color
-  backdrop: 'rgba(0,0,0,0.75)', // Semi-transparent backdrop
+
+  // Colores de texto
+  textPrimary: '#111827', // Dark text for primary content (de la segunda versión)
+  textSecondary: '#6B7280', // Gray for secondary text (de la segunda versión)
+  textTertiary: '#9CA3AF', // Light gray for tertiary text (de la segunda versión)
+
+  // Colores de estado (éxito, error, advertencias)
+  success: '#10B981', // Green for success (de la segunda versión)
+  error: '#EF4444', // Red for errors (de la segunda versión)
+  danger: '#FF6347', // Alias para error (usado en HomeScreen, de la primera versión)
+  warning: '#F59E0B', // Yellow/Orange for warnings (de la segunda versión)
+
+  // Colores de interfaz
+  divider: '#E5E7EB', // Light gray for dividers (de la segunda versión)
+  border: '#E5E7EB', // Light gray for borders (de la segunda versión)
+  disabled: '#D1D5DB', // Light gray for disabled (de la segunda versión)
+  backdrop: 'rgba(0,0,0,0.5)', // Semi-transparent backdrop (de la segunda versión)
+
+  // Otros
+  info: '#3B82F6', // Blue for info (de la segunda versión)
 };
 
-// Export alternativo para compatibilidad con imports nombrados
 export const colors = {
   primary: COLORS.primary,
   secondary: COLORS.secondary,
