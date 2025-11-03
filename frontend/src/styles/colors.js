@@ -12,9 +12,24 @@ export const COLORS = {
   textTertiary: '#90A4AE', // Gris más claro para texto terciario
   success: '#32CD32', // Un verde brillante para éxito
   error: '#FF6347', // Un rojo para errores o pendientes
+  danger: '#FF6347', // Alias para error (usado en HomeScreen)
   warning: '#FFD700', // Un amarillo para advertencias
   divider: '#607D8B', // Un gris azulado para separadores
   border: '#607D8B', // Border color
   disabled: '#9E9E9E', // Disabled color
   backdrop: 'rgba(0,0,0,0.75)', // Semi-transparent backdrop
+};
+
+// Export alternativo para compatibilidad con imports nombrados
+export const colors = {
+  primary: COLORS.primary,
+  secondary: COLORS.secondary,
+  background: COLORS.background,
+  text: COLORS.textPrimary,
+  textSecondary: COLORS.textSecondary,
+  error: COLORS.error,
+  success: COLORS.success,
+  warning: COLORS.warning,
+  border: COLORS.border,
+  disabled: COLORS.disabled,
 };
