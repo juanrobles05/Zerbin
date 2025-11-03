@@ -110,6 +110,20 @@ class ReportService:
         return reports, total
 
     @staticmethod
+    def get_user_reports(db, user_id, skip=0, limit=50, status=None):
+        query = db.query(Report).filter(Report.user_id == user_id)
+        
+        if status:
+            if status == 'collected':
+                status = 'resolved'
+            query = query.filter(Report.status == status)
+        
+        query = query.order_by(Report.created_at.desc())
+        total = query.count()
+        reports = query.offset(skip).limit(limit).all()
+        return reports, total
+
+    @staticmethod
     def get_urgent_reports(db, limit=10):
         """Obtiene los reportes urgentes (prioridad alta y pendientes)."""
         query = db.query(Report).filter(
