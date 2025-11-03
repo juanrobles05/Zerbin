@@ -1,5 +1,20 @@
 from typing import List
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# pydantic v2 moved settings into a separate package 'pydantic-settings'.
+# Try the preferred import first, then fall back to pydantic's BaseSettings
+# to provide a clearer error path when the dependency isn't installed.
+try:
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+except ModuleNotFoundError:
+    # Fallback: import BaseSettings from pydantic if pydantic-settings isn't available.
+    # In that case we provide a minimal SettingsConfigDict alias so existing
+    # usage (model_config = SettingsConfigDict(...)) still works as a plain dict.
+    from pydantic import BaseSettings
+
+    def SettingsConfigDict(*args, **kwargs):
+        # Return a plain dict when pydantic-settings is not installed. This keeps
+        # configuration behavior minimally functional for local/dev runs.
+        return dict(*args, **kwargs)
 
 
 class Settings(BaseSettings):
@@ -33,6 +48,9 @@ class Settings(BaseSettings):
     # AI / ML
     AI_MODEL_ID: str = "prithivMLmods/Trash-Net"
     CONFIDENCE_THRESHOLD: float = 0.7
+
+    # Local backend URL (used for serving uploaded files when Supabase is unavailable)
+    BACKEND_URL: str = "http://localhost:8000"
 
     # Notificaciones
     ENABLE_NOTIFICATIONS: bool = True

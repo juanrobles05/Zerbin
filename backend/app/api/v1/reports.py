@@ -103,6 +103,30 @@ async def get_reports(
     )
 
 
+@router.get("/user/{user_id}", response_model=ReportListResponse)
+async def get_user_reports(
+    user_id: int,
+    skip: int = 0,
+    limit: int = 50,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtener todos los reportes de un usuario específico.
+    Ordenados cronológicamente (más recientes primero).
+    Permite filtrar por estado: pending, in_progress, resolved.
+    """
+    reports, total = ReportService.get_user_reports(
+        db=db, user_id=user_id, skip=skip, limit=limit, status=status
+    )
+    return ReportListResponse(
+        reports=reports,
+        total=total,
+        page=(skip // limit) + 1,
+        per_page=limit
+    )
+
+
 @router.get("/stats/priority", response_model=PriorityStatsResponse)
 async def get_priority_statistics(db: Session = Depends(get_db)):
     """Obtener estadísticas de distribución de prioridades."""

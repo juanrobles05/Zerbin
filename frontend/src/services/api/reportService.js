@@ -152,6 +152,24 @@ export const reportService = {
       throw err;
     }
   },
+
+  // Get all reports for a specific user, optionally filtered by status
+  getUserReports: async (userId = 1, status = null, page = 1, limit = 50) => {
+    try {
+      const skip = (page - 1) * limit;
+      let url = `${API_CONFIG.ENDPOINTS.REPORTS}user/${userId}?skip=${skip}&limit=${limit}`;
+      
+      if (status) {
+        url += `&status=${status}`;
+      }
+
+      const response = await apiClient.get(url);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user reports:', error);
+      throw error;
+    }
+  },
 };
 
 
