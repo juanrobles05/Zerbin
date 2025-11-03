@@ -2,7 +2,9 @@ export const COLORS = {
   primary: '#2E8B57', // Un verde oscuro que se usa para botones y el logo
   primaryLight: '#3CB371', // Un verde más claro para elementos activos
   secondary: '#FF8C00', // Un naranja para estados de advertencia o acento
+
   background: '#3A4750', // Un gris oscuro para el fondo de las pantallas
+  cardBackground: '#4B5563',
   surface: '#4E5B66', // Un gris un poco más claro para las tarjetas y contenedores
   card: '#4E5B66', // Un gris un poco más claro para las tarjetas y contenedores
   white: '#FFFFFF',

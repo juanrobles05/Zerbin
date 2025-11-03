@@ -32,6 +32,8 @@ export const API_CONFIG = {
   ENDPOINTS: {
     REPORTS: '/v1/reports/',
     CLASSIFY_IMAGE: '/v1/classify/',
+    PRIORITY: '/v1/priority/',
+    POINTS: (userId) => `/v1/users/${userId}/points`,
     HEALTH: '/health',
   },
 };
