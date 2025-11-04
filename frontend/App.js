@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 // Importar pantallas
 import { WelcomeScreen } from './src/screens/home/WelcomeScreen';
@@ -11,7 +12,7 @@ import { HomeScreen } from './src/screens/home/HomeScreen';
 import { HistoryScreen } from './src/screens/history/HistoryScreen';
 import { ReportScreen } from './src/screens/reports/ReportScreen';
 import { LocationSelectorScreen } from './src/screens/location/LocationSelectorScreen';
-
+import { RewardsScreen } from './src/screens/reward/RewardsScreen';
 
 // Importar tema
 import { THEME } from './src/styles/theme';
@@ -41,7 +42,7 @@ export default function App() {
             name="Welcome"
             component={WelcomeScreen}
             options={{
-              headerShown: false, // <-- Oculta el encabezado en la pantalla de bienvenida
+              headerShown: false,
             }}
           />
           <Stack.Screen
@@ -79,6 +80,13 @@ export default function App() {
             }}
           />
           <Stack.Screen
+            name="Rewards"
+            component={RewardsScreen}
+            options={{
+              title: 'Recompensas',
+            }}
+          />
+          <Stack.Screen
             name="LocationSelector"
             component={LocationSelectorScreen}
             options={{
@@ -88,6 +96,9 @@ export default function App() {
           />
         </Stack.Navigator>
       </NavigationContainer>
+
+      {/* Este componente debe estar fuera del NavigationContainer */}
+      <Toast />
     </SafeAreaProvider>
   );
 }
