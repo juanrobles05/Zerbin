@@ -1,7 +1,17 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
+import enum
+
+class ReportStatus(str, enum.Enum):
+    """Estados posibles de un reporte"""
+    PENDING = "pending"           # Pendiente de revisión
+    ASSIGNED = "assigned"         # Asignado a un equipo
+    IN_PROGRESS = "in_progress"   # En proceso de recolección
+    COLLECTED = "collected"       # Recolectado exitosamente
+    REJECTED = "rejected"         # Rechazado (duplicado, inválido, etc.)
+    CANCELLED = "cancelled"       # Cancelado por el usuario
 
 class Report(Base):
     __tablename__ = "reports"
@@ -19,10 +29,15 @@ class Report(Base):
 
     # Metadatos
     description = Column(Text, nullable=True)
-    status = Column(String, default="pending")  # pending, in_progress, resolved
-    priority = Column(Integer, default=1)  # 1=low, 2=medium, 3=high
+    status = Column(String, default=ReportStatus.PENDING.value)
+    priority = Column(Integer, default=1)
 
-    # Usuario (opcional para reportes anónimos)
+    # Información de seguimiento
+    #assigned_to = Column(String, nullable=True)  # Equipo o persona asignada
+    #rejection_reason = Column(Text, nullable=True)  # Motivo de rechazo
+    #collection_notes = Column(Text, nullable=True)  # Notas de recolección
+
+    # Usuario
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     user = relationship("User", back_populates="reports")
 
@@ -30,6 +45,12 @@ class Report(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     resolved_at = Column(DateTime(timezone=True), nullable=True)
+    #assigned_at = Column(DateTime(timezone=True), nullable=True)
+    #collected_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relación con notificaciones
+    notifications = relationship("Notification", back_populates="report", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Report(id={self.id}, waste_type={self.waste_type}, status={self.status})>"
+    

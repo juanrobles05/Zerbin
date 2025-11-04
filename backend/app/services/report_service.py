@@ -1,7 +1,11 @@
 from datetime import datetime, timezone
 import logging
+from typing import Optional
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.models.report import Report
 from app.services.priority_service import PriorityService
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -125,23 +129,78 @@ class ReportService:
         return db.query(Report).filter(Report.id == report_id).first()
 
     @staticmethod
-    def update_report_status(db, report_id, status):
-        """
-        Actualiza el estado de un reporte y asigna puntos si se resuelve.
-        """
+    def update_report_status(
+        db: Session,
+        report_id: int,
+        status: str,
+        #assigned_to: Optional[str] = None,
+        #rejection_reason: Optional[str] = None,
+        #collection_notes: Optional[str] = None
+    ):
+        """Actualizar el estado de un reporte y notificar al usuario"""
         report = db.query(Report).filter(Report.id == report_id).first()
-        if report:
-            report.status = status
-            if status == "resolved":
-                report.resolved_at = datetime.now(timezone.utc)
-                points = POINTS_BY_WASTE_TYPE.get((report.waste_type or "").lower(), DEFAULT_POINTS)
-                if report.user_id:
-                    from app.models.user import User
-                    user = db.query(User).filter(User.id == report.user_id).first()
-                    if user:
-                        user.points = (user.points or 0) + points
-            db.commit()
-            db.refresh(report)
+        if not report:
+            return None
+        
+        # Guardar estado anterior para la notificación
+        old_status = report.status
+        
+        # Actualizar estado
+        report.status = status
+        """
+        # Actualizar campos adicionales según el estado
+        if assigned_to:
+            report.assigned_to = assigned_to
+            report.assigned_at = datetime.now(timezone.utc)
+        
+        if rejection_reason:
+            report.rejection_reason = rejection_reason
+        
+        if collection_notes:
+            report.collection_notes = collection_notes
+        """
+        # Timestamps específicos
+        if status == "collected":
+            report.collected_at = datetime.now(timezone.utc)
+            report.resolved_at = datetime.now(timezone.utc)
+            
+            # Asignar puntos adicionales por completar
+            if report.user_id:
+                from app.models.user import User
+                user = db.query(User).filter(User.id == report.user_id).first()
+                if user:
+                    bonus_points = 5  # Puntos bonus por completar
+                    user.points = (user.points or 0) + bonus_points
+        
+        db.commit()
+        db.refresh(report)
+        
+        # 🔔 Crear notificación de cambio de estado
+        if old_status != status and report.user_id:
+            try:
+                NotificationService.notify_status_change(
+                    db=db,
+                    report_id=report_id,
+                    old_status=old_status,
+                    new_status=status
+                )
+            except Exception as e:
+                logger.error(f"Error creando notificación: {e}")
+                # No fallar la actualización si la notificación falla
+        
+        return report
+
+
+    @staticmethod
+    def update_report_classification(db, report_id, corrected_type: str):
+        """Guarda la clasificación corregida manualmente por el usuario."""
+        report = db.query(Report).filter(Report.id == report_id).first()
+        if not report:
+            return None
+        report.manual_classification = corrected_type
+        report.waste_type = corrected_type  # reflejar corrección activa
+        db.commit()
+        db.refresh(report)
         return report
 
     @staticmethod
@@ -195,10 +254,7 @@ class ReportService:
 
     @staticmethod
     def get_priority_stats(db):
-        """
-        Obtiene estadísticas de prioridad de los reportes activos.
-        """
-        from sqlalchemy import func
+        """Obtiene estadísticas de prioridad de los reportes activos."""
         stats = db.query(
             Report.priority,
             func.count(Report.id).label("count")
@@ -208,3 +264,49 @@ class ReportService:
 
         priority_labels = {1: "Low", 2: "Medium", 3: "High"}
         return {priority_labels[p]: c for p, c in stats}
+    
+    @staticmethod
+    def get_user_dashboard(db: Session, user_id: int):
+        """Obtener datos del dashboard del usuario"""
+        from sqlalchemy import func
+        from app.models.user import User
+        
+        # Obtener usuario
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None
+        
+        # Total de reportes
+        total_reports = db.query(Report).filter(Report.user_id == user_id).count()
+        
+        # Reportes por estado
+        reports_by_status = {}
+        status_counts = db.query(
+            Report.status,
+            func.count(Report.id).label("count")
+        ).filter(Report.user_id == user_id).group_by(Report.status).all()
+        
+        for status, count in status_counts:
+            reports_by_status[status] = count
+        
+        # Reportes recientes (últimos 10)
+        recent_reports = db.query(Report).filter(
+            Report.user_id == user_id
+        ).order_by(Report.created_at.desc()).limit(10).all()
+        
+        # Notificaciones pendientes
+        pending_notifications = db.query(Notification).filter(
+            Notification.user_id == user_id,
+            Notification.is_read == False
+        ).count()
+        
+        return {
+            "user_id": user_id,
+            "username": user.username,
+            "email": user.email,
+            "total_reports": total_reports,
+            "reports_by_status": reports_by_status,
+            "total_points": user.points or 0,
+            "recent_reports": recent_reports,
+            "pending_notifications": pending_notifications
+        }

@@ -3,8 +3,15 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import json
 from app.core.database import get_db
-from app.schemas.report import ReportResponse, ReportListResponse, ReportBase, PriorityStatsResponse
 from pydantic import ValidationError
+from app.schemas.report import (
+    ReportResponse,
+    ReportListResponse,
+    ReportBase,
+    PriorityStatsResponse,
+    ReportStatusUpdate,  
+    UserDashboardResponse  
+)
 from app.services.report_service import ReportService
 from app.services.image_service import ImageService
 from app.services.ai_service import AIService
@@ -159,13 +166,24 @@ async def get_report_priority_details(report_id: int, db: Session = Depends(get_
 @router.put("/{report_id}/status", response_model=ReportResponse)
 async def update_report_status(
     report_id: int,
-    status: str,
+    status_update: ReportStatusUpdate,
     db: Session = Depends(get_db)
 ):
-    """Actualizar el estado de un reporte."""
-    updated_report = ReportService.update_report_status(db=db, report_id=report_id, status=status)
+    """
+    Actualizar el estado de un reporte y notificar al usuario
+    """
+    updated_report = ReportService.update_report_status(
+        db=db,
+        report_id=report_id,
+        status=status_update.status,
+        #assigned_to=status_update.assigned_to,
+        #rejection_reason=status_update.rejection_reason,
+        #collection_notes=status_update.collection_notes
+    )
+    
     if not updated_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    
     return updated_report
 
 
@@ -176,6 +194,21 @@ async def recalculate_report_priority(report_id: int, db: Session = Depends(get_
     if not updated_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     return updated_report
+
+@router.get("/user/{user_id}/dashboard", response_model=UserDashboardResponse)
+async def get_user_dashboard(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtener dashboard personalizado del usuario con sus reportes y estadísticas
+    """
+    dashboard_data = ReportService.get_user_dashboard(db=db, user_id=user_id)
+    
+    if not dashboard_data:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    return dashboard_data
 
 
 @router.post("/recalculate-all-priorities")
