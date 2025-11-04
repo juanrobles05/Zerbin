@@ -1,5 +1,4 @@
-# cambios en models/users.py
-from sqlalchemy import Column, Integer, String, DateTime, func
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, func
 from sqlalchemy.orm import relationship
 from .base import Base
 
@@ -12,9 +11,13 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # nuevo campo
+    # Sistema de puntos
     points = Column(Integer, default=0, nullable=False)
-
+    
+    # Preferencias de notificaciones
+    enable_push_notifications = Column(Boolean, default=True)
+    enable_email_notifications = Column(Boolean, default=True)
+    
     # Relationships
     reports = relationship("Report", back_populates="user")
-    # rewards = relationship("Reward", back_populates="user")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")

@@ -59,3 +59,26 @@ class PriorityStatsResponse(BaseModel):
     medium: int = Field(..., description="Número de reportes con prioridad media")
     low: int = Field(..., description="Número de reportes con prioridad baja")
     total: int = Field(..., description="Total de reportes activos")
+class ReportStatusUpdate(BaseModel):
+    """Schema para actualizar estado de reporte"""
+    status: str = Field(..., description="Nuevo estado del reporte")
+    #assigned_to: Optional[str] = Field(None, description="Asignado a")
+    #rejection_reason: Optional[str] = Field(None, max_length=500)
+    #collection_notes: Optional[str] = Field(None, max_length=500)
+    
+    @field_validator('status')
+    def validate_status(cls, v):
+        from app.models.report import ReportStatus
+        allowed = [s.value for s in ReportStatus]
+        if v not in allowed:
+            raise ValueError(f'Status debe ser uno de: {allowed}')
+        return v
+
+class UserDashboardResponse(BaseModel):
+    """Respuesta del dashboard del usuario"""
+    user_id: int
+    total_reports: int
+    reports_by_status: dict[str, int]
+    total_points: int
+    recent_reports: list[ReportResponse]
+    pending_notifications: int
