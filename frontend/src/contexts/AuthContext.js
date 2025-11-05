@@ -83,6 +83,8 @@ export const AuthProvider = ({ children }) => {
   const handleRegister = async (userData) => {
     try {
       const user = await authService.register(userData);
+
+      setUser(user);
       return user;
     } catch (error) {
       console.error('Register error in context:', error);
@@ -144,7 +146,7 @@ export const AuthProvider = ({ children }) => {
 /**
  * Hook personalizado para acceder al contexto de autenticación
  * @returns {Object} Contexto de autenticación
- * 
+ *
  * @example
  * const { user, isAuthenticated, login, logout } = useAuth();
  */

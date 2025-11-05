@@ -23,7 +23,11 @@ export const authService = {
   register: async (userData) => {
     try {
       const response = await apiClient.post('/v1/auth/register', userData);
-      return response.data;
+      const createdUser = response.data;
+
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(createdUser));
+
+      return createdUser;
     } catch (error) {
       console.error('Error registering user:', {
         message: error.message,

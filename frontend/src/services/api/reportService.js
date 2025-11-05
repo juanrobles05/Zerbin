@@ -91,7 +91,7 @@ export const priorityService = {
 
 export const reportService = {
   // Create report by sending image file + fields as multipart/form-data
-  createReport: async (imageUri, location, description, classification, manualClassification) => {
+  createReport: async (imageUri, location, description, classification, manualClassification, currentUser, token) => {
     try {
       const formData = new FormData();
       formData.append('image', buildFile(imageUri));
@@ -113,6 +113,10 @@ export const reportService = {
         }
       }
 
+      if (currentUser) {
+        formData.append('current_user', JSON.stringify(currentUser));
+      }
+
       if (description) formData.append('description', description);
 
       const response = await postWithRetry(
@@ -120,7 +124,8 @@ export const reportService = {
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`,
           }
         }
       );
@@ -141,7 +146,7 @@ export const reportService = {
       console.error('Error updating classification:', error);
       throw error;
     }
-  }, 
+  },
 
   getUserPoints: async (userId = 1) => {
     try {
@@ -158,7 +163,7 @@ export const reportService = {
     try {
       const skip = (page - 1) * limit;
       let url = `${API_CONFIG.ENDPOINTS.REPORTS}user/${userId}?skip=${skip}&limit=${limit}`;
-      
+
       if (status) {
         url += `&status=${status}`;
       }
