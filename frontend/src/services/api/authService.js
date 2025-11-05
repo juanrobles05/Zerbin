@@ -25,7 +25,12 @@ export const authService = {
       const response = await apiClient.post('/v1/auth/register', userData);
       return response.data;
     } catch (error) {
-      console.error('Error registering user:', error.response?.data || error.message);
+      console.error('Error registering user:', {
+        message: error.message,
+        status: error.response?.status,
+        body: error.response?.data,
+        error,
+      });
       throw error;
     }
   },
@@ -39,14 +44,13 @@ export const authService = {
     try {
       const response = await apiClient.post('/v1/auth/login', credentials);
       const { access_token, user } = response.data;
-      
+
       // Guardar token y datos de usuario en AsyncStorage
       await AsyncStorage.setItem(TOKEN_KEY, access_token);
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
-      
+
       return response.data;
     } catch (error) {
-      console.error('Error logging in:', error.response?.data || error.message);
       throw error;
     }
   },
@@ -118,10 +122,15 @@ export const authService = {
 
       // Actualizar datos locales
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data));
-      
+
       return response.data;
     } catch (error) {
-      console.error('Error getting current user:', error.response?.data || error.message);
+      console.error('Error getting current user:', {
+        message: error.message,
+        status: error.response?.status,
+        body: error.response?.data,
+        error,
+      });
       throw error;
     }
   },

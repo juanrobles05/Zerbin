@@ -79,11 +79,25 @@ export default function LoginScreen({ navigation }) {
     } catch (error) {
       // Manejar errores
       let errorMessage = 'Ocurrió un error al iniciar sesión. Intenta de nuevo.';
-      
-      if (error.response?.status === 401) {
-        errorMessage = 'Email o contraseña incorrectos. Verifica tus credenciales.';
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
+
+      if (error?.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+
+        if (status === 401) {
+          errorMessage = data?.detail || 'Email o contraseña incorrectos. Verifica tus credenciales.';
+        } else if (status === 400 && data?.detail === 'El email ingresado no tiene un formato válido') {
+          errorMessage = data?.detail || 'Por favor ingresa un email válido (ejemplo: usuario@ejemplo.com)';
+        } else {
+          console.error('Error logging in:', {
+            message: error.message,
+            status: status,
+            body: data,
+            error,
+          });
+        }
+      } else {
+        console.error('Network or unexpected error during login:', error);
       }
 
       Alert.alert('Error al iniciar sesión', errorMessage);

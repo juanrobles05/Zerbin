@@ -16,30 +16,9 @@ async def register(
 ):
     """
     Registra un nuevo usuario en el sistema.
-    
-    **Acceptance Criteria:**
-    - Registration with email and password ✓
-    - Field validation and error handling ✓
-    - Confirmation of successful registration ✓
-    
-    **Body Parameters:**
-    - username: Nombre de usuario único (3-50 caracteres)
-    - email: Email válido y único
-    - password: Contraseña (mínimo 6 caracteres)
-    
-    **Returns:**
-    - 201: Usuario creado exitosamente
-    - 400: Email o username ya registrado, o validación fallida
-    
-    **Example:**
-    ```json
-    {
-        "username": "juan_user",
-        "email": "juan@example.com",
-        "password": "securepass123"
-    }
-    ```
     """
+    print("Register attempt for email:", user_data.email)
+
     return AuthService.register_user(db, user_data)
 
 
@@ -50,42 +29,8 @@ async def login(
 ):
     """
     Inicia sesión con credenciales de usuario.
-    
-    **Acceptance Criteria:**
-    - Login by email/password ✓
-    - Display error message if credentials are invalid ✓
-    - Upon logging in, the user accesses their dashboard ✓
-    
-    **Body Parameters:**
-    - email: Email del usuario
-    - password: Contraseña
-    
-    **Returns:**
-    - 200: Login exitoso con access_token y datos del usuario
-    - 401: Credenciales inválidas
-    
-    **Example:**
-    ```json
-    {
-        "email": "juan@example.com",
-        "password": "securepass123"
-    }
-    ```
-    
-    **Response:**
-    ```json
-    {
-        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-        "token_type": "bearer",
-        "user": {
-            "id": 1,
-            "username": "juan_user",
-            "email": "juan@example.com",
-            "created_at": "2025-11-02T10:00:00"
-        }
-    }
-    ```
     """
+
     return AuthService.login_user(db, login_data)
 
 
@@ -95,9 +40,9 @@ async def get_current_user_info(
 ):
     """
     Obtiene la información del usuario autenticado actual.
-    
+
     **Requires Authentication:** Bearer token en header Authorization
-    
+
     **Returns:**
     - 200: Datos del usuario actual
     - 401: Token inválido o expirado

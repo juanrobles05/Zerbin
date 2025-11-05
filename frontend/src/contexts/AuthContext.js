@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
       if (savedToken && savedUser) {
         setToken(savedToken);
         setUser(savedUser);
-        
+
         // Opcional: verificar que el token siga siendo válido
         try {
           const currentUser = await authService.getCurrentUser();
@@ -60,8 +60,8 @@ export const AuthProvider = ({ children }) => {
 
   /**
    * Inicia sesión con email y contraseña
-   * @param {string} email 
-   * @param {string} password 
+   * @param {string} email
+   * @param {string} password
    * @returns {Promise<Object>} Usuario autenticado
    */
   const handleLogin = async (email, password) => {
@@ -71,7 +71,6 @@ export const AuthProvider = ({ children }) => {
       setUser(response.user);
       return response;
     } catch (error) {
-      console.error('Login error in context:', error);
       throw error;
     }
   };
