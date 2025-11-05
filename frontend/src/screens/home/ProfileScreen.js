@@ -11,8 +11,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { THEME } from '../../styles/theme';
+import { reportService } from '../../services/api/reportService';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export function ProfileScreen({ navigation }) {
+  const [points, setPoints] = useState(0);
   const { user, isAuthenticated, logout } = useAuth();
 
   // Si el usuario NO está autenticado (ingresó sin cuenta)
@@ -21,7 +25,7 @@ export function ProfileScreen({ navigation }) {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={styles.backButton}
             >
@@ -34,7 +38,7 @@ export function ProfileScreen({ navigation }) {
             <View style={styles.iconContainer}>
               <FontAwesome5 name="user-slash" size={80} color="#607D8B" />
             </View>
-            
+
             <Text style={styles.noAccountTitle}>No hay cuenta activa</Text>
             <Text style={styles.noAccountSubtitle}>
               Para acceder a tu perfil y ver tus puntos acumulados, necesitas crear una cuenta o iniciar sesión.
@@ -70,12 +74,70 @@ export function ProfileScreen({ navigation }) {
     );
   }
 
+  useEffect(() => {
+    let mounted = true;
+
+    const loadPoints = async () => {
+      try {
+        // If user is not logged, nothing to do
+        if (!user?.id) {
+          // try read cached points if any
+          const cached = await AsyncStorage.getItem('user_points');
+          if (mounted && cached != null) setPoints(Number(cached) || 0);
+          return;
+        }
+
+        const lastReportAt = await AsyncStorage.getItem('last_report_at'); // set when a new report is created
+        const lastChecked = await AsyncStorage.getItem('profile_last_checked_report_at');
+
+        // If there's a new report since last check -> fetch fresh points
+        if (lastReportAt && lastReportAt !== lastChecked) {
+          try {
+            const resp = await reportService.getUserPoints(user.id);
+            const pts = (resp && typeof resp === 'object' && 'points' in resp) ? resp.points : Number(resp) || 0;
+            if (mounted) setPoints(pts);
+            await AsyncStorage.setItem('user_points', String(pts));
+            await AsyncStorage.setItem('profile_last_checked_report_at', lastReportAt);
+            return;
+          } catch (err) {
+            console.warn('Failed to refresh points after new report:', err?.message || err);
+            // fallthrough to cached value if available
+          }
+        }
+
+        // No new report or refresh failed -> use cached points if present
+        const cachedPoints = await AsyncStorage.getItem('user_points');
+        if (mounted && cachedPoints != null) {
+          setPoints(Number(cachedPoints) || 0);
+          return;
+        }
+
+        // No cache -> last resort fetch from backend
+        try {
+          const resp = await reportService.getUserPoints(user.id);
+          const pts = (resp && typeof resp === 'object' && 'points' in resp) ? resp.points : Number(resp) || 0;
+          if (mounted) setPoints(pts);
+          await AsyncStorage.setItem('user_points', String(pts));
+          // set last_checked to now (no new report marker)
+          await AsyncStorage.setItem('profile_last_checked_report_at', Date.now().toString());
+        } catch (err) {
+          console.warn('Failed to fetch points (fallback):', err?.message || err);
+        }
+      } catch (err) {
+        console.warn('loadPoints error:', err?.message || err);
+      }
+    };
+
+    loadPoints();
+    return () => { mounted = false; };
+  }, [user?.id, user?.points]);
+
   // Si el usuario SÍ está autenticado
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
@@ -98,7 +160,7 @@ export function ProfileScreen({ navigation }) {
           <View style={styles.pointsContent}>
             <FontAwesome5 name="star" size={40} color="#FFD700" />
             <View style={styles.pointsInfo}>
-              <Text style={styles.pointsNumber}>{user?.points || 0}</Text>
+              <Text style={styles.pointsNumber}>{points}</Text>
               <Text style={styles.pointsLabel}>Puntos acumulados</Text>
             </View>
           </View>
@@ -107,7 +169,7 @@ export function ProfileScreen({ navigation }) {
         {/* Información de la cuenta */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Información de la cuenta</Text>
-          
+
           <View style={styles.infoItem}>
             <FontAwesome5 name="user" size={18} color="#B0BEC5" style={styles.infoIcon} />
             <View style={styles.infoContent}>

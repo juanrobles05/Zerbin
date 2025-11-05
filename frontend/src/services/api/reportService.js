@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_CONFIG } from '../../utils/constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
@@ -130,12 +131,21 @@ export const reportService = {
         }
       );
 
+      const now = Date.now().toString();
+      await AsyncStorage.setItem('last_report_at', now);
+
+      const pointsFromResp = response?.points ?? response?.user?.points;
+      if (typeof pointsFromResp !== 'undefined') {
+        await AsyncStorage.setItem('user_points', String(pointsFromResp));
+      }
+
       return response.data;
     } catch (error) {
       console.error('Error creating report:', error);
       throw error;
     }
   },
+
   updateReportClassification: async (reportId, correctedType) => {
     try {
       const response = await apiClient.patch(`${API_CONFIG.ENDPOINTS.REPORTS}${reportId}/classification`, {

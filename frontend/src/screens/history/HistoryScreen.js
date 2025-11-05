@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  RefreshControl, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
   Alert
@@ -15,12 +15,14 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { THEME } from '../../styles/theme';
 import ReportCard from '../../components/reports/ReportCard';
 import StatusFilter from '../../components/reports/StatusFilter';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * HistoryScreen - User Dashboard
  * Displays a chronological list of all user reports with filtering capabilities
  */
 export function HistoryScreen({ navigation, route }) {
+  const { user } = useAuth();
   // State management
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,7 @@ export function HistoryScreen({ navigation, route }) {
   const [hasMore, setHasMore] = useState(true);
 
   // TODO: Replace with actual user ID from authentication
-  const userId = 1;
+  const userId = user?.id;
 
   /**
    * Fetch user reports from the API
@@ -47,7 +49,7 @@ export function HistoryScreen({ navigation, route }) {
 
       if (response) {
         const newReports = response.reports || [];
-        
+
         if (append) {
           setReports(prev => [...prev, ...newReports]);
         } else {
@@ -188,7 +190,7 @@ export function HistoryScreen({ navigation, route }) {
    */
   const renderFooter = () => {
     if (!hasMore || reports.length === 0) return null;
-    
+
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={THEME.colors.primary} />
@@ -206,7 +208,7 @@ export function HistoryScreen({ navigation, route }) {
             {totalReports} {totalReports === 1 ? 'reporte' : 'reportes'} en total
           </Text>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addButton}
           onPress={handleCreateReport}
         >
@@ -222,7 +224,7 @@ export function HistoryScreen({ navigation, route }) {
       </View>
 
       {/* Status Filter */}
-      <StatusFilter 
+      <StatusFilter
         selectedStatus={selectedStatus}
         onStatusChange={handleStatusChange}
       />
@@ -243,8 +245,8 @@ export function HistoryScreen({ navigation, route }) {
             reports.length === 0 && styles.listContentEmpty
           ]}
           refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
+            <RefreshControl
+              refreshing={refreshing}
               onRefresh={onRefresh}
               colors={[THEME.colors.primary]}
               tintColor={THEME.colors.primary}
@@ -272,13 +274,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
-    backgroundColor: THEME.colors.white,
+    backgroundColor: THEME.colors.cardBackground,
     ...THEME.shadows?.small,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: THEME.colors.text,
+    color: THEME.colors.textPrimary,
   },
   headerSubtitle: {
     fontSize: 14,
