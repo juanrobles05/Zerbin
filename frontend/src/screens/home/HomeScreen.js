@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../../styles/theme';
 import { FontAwesome5, MaterialIcons, Feather } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Componente para los botones principales
 const MainButton = ({ iconName, text, subtext, onPress }) => (
@@ -58,17 +59,67 @@ const RecentReport = ({ status }) => (
 
 // Componente principal de la pantalla
 export function HomeScreen({ navigation }) {
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const handleLogout = () => {
+    if (!isAuthenticated) {
+      // Si no hay usuario autenticado, simplemente redirigir al login
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+      return;
+    }
+
+    // Si hay usuario autenticado, confirmar antes de cerrar sesión
+    Alert.alert(
+      'Cerrar sesión',
+      '¿Estás seguro que deseas cerrar sesión?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Cerrar sesión',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  const handleProfile = () => {
+    navigation.navigate('Profile');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>¡Hola! ¿Qué quieres reportar hoy?</Text>
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greeting}>
+              {isAuthenticated ? `¡Hola ${user?.username}!` : '¡Hola!'}
+            </Text>
+            {isAuthenticated && (
+              <View style={styles.pointsBadge}>
+                <FontAwesome5 name="star" size={14} color="#FFD700" />
+                <Text style={styles.pointsText}>{user?.points || 0}</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.headerIcons}>
-            <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+            <TouchableOpacity onPress={handleLogout}>
               <FontAwesome5 name="sign-out-alt" size={24} color={THEME.colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+            <TouchableOpacity onPress={handleProfile}>
               <FontAwesome5 name="user-circle" size={24} color={THEME.colors.textPrimary} />
             </TouchableOpacity>
           </View>
@@ -136,10 +187,32 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 5,
   },
+  greetingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   greeting: {
     fontSize: 20,
     fontWeight: 'bold',
     color: THEME.colors.textPrimary,
+    marginRight: 8,
+  },
+  pointsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  pointsText: {
+    color: '#FFD700',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginLeft: 4,
   },
   headerIcons: {
     flexDirection: 'row',

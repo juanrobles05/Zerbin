@@ -12,3 +12,8 @@ uvicorn==0.38.0
 psycopg2==2.9.11
 python-multipart==0.0.20
 torch==2.9.0+cpu
+
+# Authentication dependencies
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
