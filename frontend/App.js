@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { AuthProvider } from './src/context/AuthContext';
+import { AuthProvider } from './src/contexts/AuthContext';
 
 // Importar pantallas
 import { WelcomeScreen } from './src/screens/home/WelcomeScreen';
