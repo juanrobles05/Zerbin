@@ -28,7 +28,7 @@ class ReportService:
     async def create_report(db, report_data, user_id=None):
         """
         Crea un nuevo reporte con cálculo automático de prioridad y asignación de puntos.
-        
+
         Args:
             db: Sesión de base de datos
             report_data: Datos del reporte
@@ -65,14 +65,15 @@ class ReportService:
         db.refresh(report)
 
         # Asignar puntos al usuario si existe
+        points_earned = 0
         if report.user_id:
-            points = POINTS_BY_WASTE_TYPE.get((waste_type or "").lower(), DEFAULT_POINTS)
+            points_earned = POINTS_BY_WASTE_TYPE.get((waste_type or "").lower(), DEFAULT_POINTS)
             from app.models.user import User
             user = db.query(User).filter(User.id == report.user_id).first()
             if user:
-                user.points = (user.points or 0) + points
+                user.points = (user.points or 0) + points_earned
                 db.commit()
-                logger.info(f"Usuario {user.username} ganó {points} puntos. Total: {user.points}")
+                logger.info(f"Usuario {user.username} ganó {points_earned} puntos. Total: {user.points}")
 
         # Log de información si el reporte es urgente
         if priority_level == 3:
@@ -83,6 +84,8 @@ class ReportService:
             )
             await ReportService._generate_urgent_alert(report)
 
+        # Añadir puntos ganados como atributo temporal para la respuesta
+        report.points_earned = points_earned
         return report
 
     @staticmethod
@@ -117,12 +120,12 @@ class ReportService:
     @staticmethod
     def get_user_reports(db, user_id, skip=0, limit=50, status=None):
         query = db.query(Report).filter(Report.user_id == user_id)
-        
+
         if status:
             if status == 'collected':
                 status = 'resolved'
             query = query.filter(Report.status == status)
-        
+
         query = query.order_by(Report.created_at.desc())
         total = query.count()
         reports = query.offset(skip).limit(limit).all()

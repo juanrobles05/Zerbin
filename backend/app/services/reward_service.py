@@ -18,9 +18,9 @@ def create_reward(db: Session, reward: RewardCreate):
     db.refresh(db_reward)
     return db_reward
 
-# Listar todas las recompensas
+# Listar todas las recompensas ordenadas de menor a mayor por puntos
 def get_all_rewards(db: Session):
-    return db.query(Reward).all()
+    return db.query(Reward).order_by(Reward.points_required.asc()).all()
 
 # Canjear recompensa
 def redeem_reward(db: Session, data: RewardRedemptionCreate):
@@ -46,7 +46,7 @@ def redeem_reward(db: Session, data: RewardRedemptionCreate):
     db.refresh(redemption)
     db.refresh(user)
 
-    # Devolver solo lo necesario
+    # Devolver información completa del canje
     return {
         "id": redemption.id,
         "user_id": user.id,
@@ -54,5 +54,8 @@ def redeem_reward(db: Session, data: RewardRedemptionCreate):
         "redeemed_at": redemption.redeemed_at,
         "reward_name": reward.name,
         "reward_description": reward.description,
-        "user_points": user.points
+        "points_redeemed": reward.points_required,
+        "user_points": user.points,
+        "pickup_message": "Puedes recoger tu recompensa en las oficinas de Zerbin presentando tu código de canje.",
+        "redemption_code": f"ZERBIN-{redemption.id:06d}"
     }
