@@ -132,7 +132,7 @@ export function ReportScreen({ navigation, route }) {
     setReportLoading(true);
     // Después de enviar el reporte exitosamente:
     try {
-      await reportService.createReport(
+      const reportResponse = await reportService.createReport(
         imageUri,
         activeLocation,
         description,
@@ -142,16 +142,16 @@ export function ReportScreen({ navigation, route }) {
         token
       );
 
-      // 🔹 Obtener puntos desde backend
-      const data = await reportService.getUserPoints(currentUser.id);
-
-            // Último reporte
-      const lastReport = data?.history?.[data.history.length - 1];
-      const pointsThisReport = lastReport ? lastReport.points : 0;
+      // 🔹 Obtener puntos ganados de la respuesta del reporte
+      const pointsThisReport = reportResponse?.points_earned || 0;
+      
+      // 🔹 Obtener puntos totales actualizados del usuario
+      const pointsData = await reportService.getUserPoints(currentUser.id);
+      const totalUserPoints = pointsData?.points || 0;
 
       // Mostrar overlay con puntos
       setEarnedPoints(pointsThisReport);
-      setTotalPoints(data.points || 0);
+      setTotalPoints(totalUserPoints);
       setShowPointsOverlay(true);
     } catch (e) {
       // Si no hay sistema de puntos → fallback al Alert existente
