@@ -14,6 +14,9 @@ class User(Base):
     # Campo de puntos para el sistema de recompensas
     points = Column(Integer, default=0, nullable=False)
 
+    # Campo de rol para permisos de administrador
+    role = Column(String, default="user", nullable=False)  # "user" o "admin"
+
     # Relaciones
     reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
     redemptions = relationship("RewardRedemption", back_populates="user", cascade="all, delete-orphan")

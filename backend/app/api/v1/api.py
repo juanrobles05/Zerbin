@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import reports, upload, users, priority, auth, rewards
+from app.api.v1 import reports, upload, users, priority, auth, rewards, admin
 
 api_router = APIRouter()
 
@@ -9,3 +9,4 @@ api_router.include_router(upload.router, tags=["upload"])
 api_router.include_router(priority.router, prefix="/priority", tags=["priority"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(rewards.router, prefix="/rewards", tags=["rewards"])
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
