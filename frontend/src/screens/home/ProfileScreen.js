@@ -12,11 +12,13 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { THEME } from '../../styles/theme';
 import { reportService } from '../../services/api/reportService';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export function ProfileScreen({ navigation }) {
   const [points, setPoints] = useState(0);
+  const [stats, setStats] = useState({ total: 0, resolved: 0 });
   const { user, isAuthenticated, logout } = useAuth();
 
   // Si el usuario NO está autenticado (ingresó sin cuenta)
@@ -74,63 +76,81 @@ export function ProfileScreen({ navigation }) {
     );
   }
 
-  useEffect(() => {
-    let mounted = true;
+  // Cargar puntos del usuario - se ejecuta cada vez que la pantalla obtiene el foco
+  useFocusEffect(
+    useCallback(() => {
+      const loadPoints = async () => {
+        try {
+          // If user is not logged, nothing to do
+          if (!user?.id) {
+            // try read cached points if any
+            const cached = await AsyncStorage.getItem('user_points');
+            if (cached != null) setPoints(Number(cached) || 0);
+            return;
+          }
 
-    const loadPoints = async () => {
-      try {
-        // If user is not logged, nothing to do
-        if (!user?.id) {
-          // try read cached points if any
-          const cached = await AsyncStorage.getItem('user_points');
-          if (mounted && cached != null) setPoints(Number(cached) || 0);
-          return;
-        }
-
-        const lastReportAt = await AsyncStorage.getItem('last_report_at'); // set when a new report is created
-        const lastChecked = await AsyncStorage.getItem('profile_last_checked_report_at');
-
-        // If there's a new report since last check -> fetch fresh points
-        if (lastReportAt && lastReportAt !== lastChecked) {
+          // Siempre intentar cargar desde la API cuando la pantalla obtiene el foco
           try {
             const resp = await reportService.getUserPoints(user.id);
             const pts = (resp && typeof resp === 'object' && 'points' in resp) ? resp.points : Number(resp) || 0;
-            if (mounted) setPoints(pts);
+            setPoints(pts);
             await AsyncStorage.setItem('user_points', String(pts));
-            await AsyncStorage.setItem('profile_last_checked_report_at', lastReportAt);
-            return;
+            
+            // Actualizar el timestamp de última comprobación
+            const now = Date.now().toString();
+            await AsyncStorage.setItem('last_report_at', now);
+            await AsyncStorage.setItem('profile_last_checked_report_at', now);
           } catch (err) {
-            console.warn('Failed to refresh points after new report:', err?.message || err);
-            // fallthrough to cached value if available
+            console.warn('Failed to fetch points:', err?.message || err);
+            // Si falla, usar caché como fallback
+            const cachedPoints = await AsyncStorage.getItem('user_points');
+            if (cachedPoints != null) {
+              setPoints(Number(cachedPoints) || 0);
+            }
           }
+        } catch (err) {
+          console.warn('loadPoints error:', err?.message || err);
         }
+      };
 
-        // No new report or refresh failed -> use cached points if present
-        const cachedPoints = await AsyncStorage.getItem('user_points');
-        if (mounted && cachedPoints != null) {
-          setPoints(Number(cachedPoints) || 0);
+      loadPoints();
+    }, [user?.id])
+  );
+
+  // Cargar estadísticas del usuario
+  useEffect(() => {
+    let mounted = true;
+
+    const loadStats = async () => {
+      try {
+        if (!user?.id || !isAuthenticated) {
+          setStats({ total: 0, resolved: 0 });
           return;
         }
 
-        // No cache -> last resort fetch from backend
-        try {
-          const resp = await reportService.getUserPoints(user.id);
-          const pts = (resp && typeof resp === 'object' && 'points' in resp) ? resp.points : Number(resp) || 0;
-          if (mounted) setPoints(pts);
-          await AsyncStorage.setItem('user_points', String(pts));
-          // set last_checked to now (no new report marker)
-          await AsyncStorage.setItem('profile_last_checked_report_at', Date.now().toString());
-        } catch (err) {
-          console.warn('Failed to fetch points (fallback):', err?.message || err);
+        const response = await reportService.getUserReports(user.id);
+
+        // La respuesta puede ser un array directamente o un objeto con una propiedad 'reports' o 'data'
+        const reportsArray = Array.isArray(response)
+          ? response
+          : (response?.reports || response?.data || []);
+
+        if (mounted && reportsArray) {
+          const total = reportsArray.length;
+          const resolved = reportsArray.filter(r =>
+            r.status?.toLowerCase() === 'resuelto' || r.status?.toLowerCase() === 'resolved'
+          ).length;
+
+          setStats({ total, resolved });
         }
       } catch (err) {
-        console.warn('loadPoints error:', err?.message || err);
+        console.warn('Error loading stats:', err?.message || err);
       }
     };
 
-    loadPoints();
+    loadStats();
     return () => { mounted = false; };
-  }, [user?.id, user?.points]);
+  }, [user?.id, isAuthenticated]);
 
   // Si el usuario SÍ está autenticado
   return (
@@ -164,6 +184,13 @@ export function ProfileScreen({ navigation }) {
               <Text style={styles.pointsLabel}>Puntos acumulados</Text>
             </View>
           </View>
+          <TouchableOpacity
+            style={styles.redeemButton}
+            onPress={() => navigation.navigate('Rewards')}
+          >
+            <FontAwesome5 name="gift" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.redeemButtonText}>Canjear Recompensas</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Información de la cuenta */}
@@ -209,17 +236,17 @@ export function ProfileScreen({ navigation }) {
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <FontAwesome5 name="file-alt" size={24} color="#3CB371" />
-              <Text style={styles.statNumber}>-</Text>
+              <Text style={styles.statNumber}>{stats.total}</Text>
               <Text style={styles.statLabel}>Reportes</Text>
             </View>
             <View style={styles.statItem}>
               <FontAwesome5 name="check-circle" size={24} color="#32CD32" />
-              <Text style={styles.statNumber}>-</Text>
+              <Text style={styles.statNumber}>{stats.resolved}</Text>
               <Text style={styles.statLabel}>Resueltos</Text>
             </View>
             <View style={styles.statItem}>
               <FontAwesome5 name="trophy" size={24} color="#FFD700" />
-              <Text style={styles.statNumber}>{user?.points || 0}</Text>
+              <Text style={styles.statNumber}>{points}</Text>
               <Text style={styles.statLabel}>Puntos</Text>
             </View>
           </View>
@@ -372,6 +399,22 @@ const styles = StyleSheet.create({
   pointsContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 15,
+  },
+  redeemButton: {
+    backgroundColor: '#f59e0b',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  redeemButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   pointsInfo: {
     marginLeft: 20,
