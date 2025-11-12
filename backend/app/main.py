@@ -8,6 +8,7 @@ from app.core.database import engine
 from app.models import base
 from app.api.v1.api import api_router
 from app.services.ai_service import AIService
+from app.core.exceptions import register_exception_handlers
 
 # Crear tablas
 base.Base.metadata.create_all(bind=engine)
@@ -19,6 +20,8 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+register_exception_handlers(app)
 
 async def startup_event():
     print("Iniciando la aplicación Zerbin API...")

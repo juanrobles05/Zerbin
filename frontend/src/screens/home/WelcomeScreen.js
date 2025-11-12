@@ -1,9 +1,11 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../../styles/theme';
 import { FontAwesome5, MaterialIcons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import LEAFIcon from '../../../assets/leaf-icon.svg';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ICON_SIZE = 30;
 const ICON_COLOR = THEME.colors.primary;
@@ -21,9 +23,32 @@ const FeatureItem = ({ icon, text, subtext }) => (
 );
 
 export function WelcomeScreen({ navigation }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Verificar si el usuario ya está autenticado al cargar la pantalla
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      // Si ya está autenticado, navegar directamente al Home
+      navigation.replace('Home');
+    }
+  }, [isAuthenticated, isLoading, navigation]);
+
   const handleStartPress = () => {
-    navigation.navigate('Home');
+    // Navegar a Login para que el usuario se autentique o continúe sin cuenta
+    navigation.navigate('Login');
   };
+
+  // Mostrar loading mientras se verifica la autenticación
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, styles.loadingContainer]}>
+          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <Text style={styles.loadingText}>Cargando...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -148,5 +173,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: THEME.colors.textSecondary,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: THEME.colors.textSecondary,
   },
 });

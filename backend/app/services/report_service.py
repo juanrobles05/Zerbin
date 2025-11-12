@@ -25,9 +25,14 @@ class ReportService:
         pass
 
     @staticmethod
-    async def create_report(db, report_data):
+    async def create_report(db, report_data, user_id=None):
         """
         Crea un nuevo reporte con cálculo automático de prioridad y asignación de puntos.
+        
+        Args:
+            db: Sesión de base de datos
+            report_data: Datos del reporte
+            user_id: ID del usuario autenticado (None para reportes anónimos)
         """
         # Extraer datos de clasificación AI
         waste_type = report_data.ai_classification.get("type")
@@ -40,8 +45,7 @@ class ReportService:
             created_at=datetime.now(timezone.utc)
         )
 
-        # Crear reporte (por ahora user_id forzado hasta integrar autenticación)
-        forced_user_id = 1
+        # Crear reporte (user_id puede ser None para reportes anónimos)
         report = Report(
             latitude=report_data.latitude,
             longitude=report_data.longitude,
@@ -53,7 +57,7 @@ class ReportService:
             confidence_score=confidence_score,
             status="pending",
             priority=priority_level,
-            user_id=forced_user_id
+            user_id=user_id  # Usar el user_id proporcionado (puede ser None)
         )
 
         db.add(report)
@@ -68,6 +72,7 @@ class ReportService:
             if user:
                 user.points = (user.points or 0) + points
                 db.commit()
+                logger.info(f"Usuario {user.username} ganó {points} puntos. Total: {user.points}")
 
         # Log de información si el reporte es urgente
         if priority_level == 3:
@@ -105,6 +110,20 @@ class ReportService:
             query = query.filter(Report.priority == priority)
 
         query = query.order_by(Report.priority.desc(), Report.created_at.desc())
+        total = query.count()
+        reports = query.offset(skip).limit(limit).all()
+        return reports, total
+
+    @staticmethod
+    def get_user_reports(db, user_id, skip=0, limit=50, status=None):
+        query = db.query(Report).filter(Report.user_id == user_id)
+        
+        if status:
+            if status == 'collected':
+                status = 'resolved'
+            query = query.filter(Report.status == status)
+        
+        query = query.order_by(Report.created_at.desc())
         total = query.count()
         reports = query.offset(skip).limit(limit).all()
         return reports, total

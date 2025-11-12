@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView } from 'expo-camera';
 import { useCamera } from '../../hooks/useCamera';
+import { useImagePicker } from '../../hooks/useImagePicker';
 import { useLocation } from '../../hooks/useLocation';
 import { CameraControls } from '../../components/camera/CameraControls';
 import { CameraPreview } from '../../components/camera/CameraPreview';
@@ -20,6 +21,7 @@ export const CameraScreen = ({ navigation, route }) => {
   const hideTimer = useRef(null);
 
   const { requestCameraPermission, takePicture, isLoading } = useCamera();
+  const { pickImageFromGallery, isLoading: isPickerLoading } = useImagePicker();
   const {
     location,
     isLoading: isLocationLoading,
@@ -83,14 +85,29 @@ export const CameraScreen = ({ navigation, route }) => {
     setCapturedImage(null);
     setPhotoLocation(null);
     setShowPreview(false);
-    setShowCamera(true);
-    startWatchingLocation();
+    // No volvemos a abrir automáticamente ni la cámara ni la galería
+    // El usuario decidirá qué hacer desde la pantalla inicial
   };
 
   const handleToggleCoords = () => {
     setShowCoords(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => setShowCoords(false), 2000);
+  };
+
+  const handleGalleryPress = async () => {
+    const hasLocation = await requestLocationPermission();
+    const image = await pickImageFromGallery();
+    
+    if (image) {
+      let loc = location;
+      if (!loc && hasLocation) {
+        loc = await getCurrentLocation();
+      }
+      setPhotoLocation(loc);
+      setCapturedImage(image);
+      setShowPreview(true);
+    }
   };
 
   if (showPreview && capturedImage) {
@@ -132,7 +149,7 @@ export const CameraScreen = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
         <Text style={styles.mainText}>¿Listo para reportar un residuo?</Text>
-        <Text style={styles.subText}>Presiona el botón para abrir la cámara y tomar una foto.</Text>
+        <Text style={styles.subText}>Toma una foto o selecciona una imagen de tu galería.</Text>
 
         <TouchableOpacity style={styles.cameraButtonContainer} onPress={handleCameraPress}>
           <LinearGradient
@@ -145,6 +162,23 @@ export const CameraScreen = ({ navigation, route }) => {
             <Text style={styles.cameraButtonText}>Abrir Cámara</Text>
           </LinearGradient>
         </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.galleryButtonContainer} 
+          onPress={handleGalleryPress}
+          disabled={isPickerLoading}
+        >
+          <View style={styles.galleryButton}>
+            {isPickerLoading ? (
+              <ActivityIndicator size="small" color={THEME.colors.primary} />
+            ) : (
+              <>
+                <FontAwesome5 name="images" size={26} color={THEME.colors.primary} />
+                <Text style={styles.galleryButtonText}>Seleccionar de Galería</Text>
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -155,8 +189,23 @@ const styles = StyleSheet.create({
   contentContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   mainText: { fontSize: 24, fontWeight: 'bold', color: THEME.colors.textPrimary, marginBottom: 10, textAlign: 'center' },
   subText: { fontSize: 16, color: THEME.colors.textSecondary, marginBottom: 30, textAlign: 'center' },
+  cameraButtonContainer: { marginBottom: 16 },
   cameraButton: { backgroundColor: THEME.colors.primary, borderRadius: 50, flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 30 },
   cameraButtonText: { color: THEME.colors.white, fontSize: 18, fontWeight: 'bold', marginLeft: 10 },
+  galleryButtonContainer: { marginTop: 8 },
+  galleryButton: { 
+    backgroundColor: THEME.colors.white, 
+    borderRadius: 50, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 15, 
+    paddingHorizontal: 30,
+    borderWidth: 2,
+    borderColor: THEME.colors.primary,
+    minWidth: 260,
+    justifyContent: 'center'
+  },
+  galleryButtonText: { color: THEME.colors.primary, fontSize: 18, fontWeight: 'bold', marginLeft: 10 },
   cameraContainer: { flex: 1 },
   camera: { flex: 1 },
   fabContainer: { position: 'absolute', right: 16, bottom: 20, alignItems: 'flex-end' },

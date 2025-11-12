@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_CONFIG } from '../../utils/constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
@@ -91,7 +92,7 @@ export const priorityService = {
 
 export const reportService = {
   // Create report by sending image file + fields as multipart/form-data
-  createReport: async (imageUri, location, description, classification, manualClassification) => {
+  createReport: async (imageUri, location, description, classification, manualClassification, currentUser, token) => {
     try {
       const formData = new FormData();
       formData.append('image', buildFile(imageUri));
@@ -113,6 +114,10 @@ export const reportService = {
         }
       }
 
+      if (currentUser) {
+        formData.append('current_user', JSON.stringify(currentUser));
+      }
+
       if (description) formData.append('description', description);
 
       const response = await postWithRetry(
@@ -120,10 +125,19 @@ export const reportService = {
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`,
           }
         }
       );
+
+      const now = Date.now().toString();
+      await AsyncStorage.setItem('last_report_at', now);
+
+      const pointsFromResp = response?.points ?? response?.user?.points;
+      if (typeof pointsFromResp !== 'undefined') {
+        await AsyncStorage.setItem('user_points', String(pointsFromResp));
+      }
 
       return response.data;
     } catch (error) {
@@ -131,6 +145,7 @@ export const reportService = {
       throw error;
     }
   },
+
   updateReportClassification: async (reportId, correctedType) => {
     try {
       const response = await apiClient.patch(`${API_CONFIG.ENDPOINTS.REPORTS}${reportId}/classification`, {
@@ -141,7 +156,7 @@ export const reportService = {
       console.error('Error updating classification:', error);
       throw error;
     }
-  }, 
+  },
 
   getUserPoints: async (userId = 1) => {
     try {
@@ -150,6 +165,24 @@ export const reportService = {
     } catch (err) {
       console.error('Error fetching user points:', err);
       throw err;
+    }
+  },
+
+  // Get all reports for a specific user, optionally filtered by status
+  getUserReports: async (userId = 1, status = null, page = 1, limit = 50) => {
+    try {
+      const skip = (page - 1) * limit;
+      let url = `${API_CONFIG.ENDPOINTS.REPORTS}user/${userId}?skip=${skip}&limit=${limit}`;
+
+      if (status) {
+        url += `&status=${status}`;
+      }
+
+      const response = await apiClient.get(url);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user reports:', error);
+      throw error;
     }
   },
 };

@@ -9,9 +9,10 @@ import { reportService, classify, priorityService } from '../../services/api/rep
 import { PointsOverlay } from "../../components/PointsOverlay";
 import WasteTypeSelector from '../../components/common/WasteTypeSelector';
 import { useLocation } from '../../hooks/useLocation';
-// import { PriorityIndicator, DecompositionTime } from '../../components/common/PriorityIndicator';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function ReportScreen({ navigation, route }) {
+  const { user, token } = useAuth();
   const imageUri = route?.params?.image;
   const initialLocation = route?.params?.location;
 
@@ -50,11 +51,6 @@ export function ReportScreen({ navigation, route }) {
     try {
       const data = await classify.image(uri);
       setClassification(data);
-
-      // if (data.type) {
-      //   const priority = await priorityService.getPriorityInfo(data.type);
-      //   setPriorityInfo(priority);
-      // }
     } catch (error) {
       console.error('Error clasificando:', error);
       alert('Error al clasificar la imagen');
@@ -118,6 +114,7 @@ export function ReportScreen({ navigation, route }) {
   };
 
   const handleReportSubmit = async () => {
+    const currentUser = user;
     const activeLocation = getActiveLocation();
 
     if (!activeLocation?.coords) {
@@ -140,11 +137,13 @@ export function ReportScreen({ navigation, route }) {
         activeLocation,
         description,
         classification,
-        manualSelectedType
+        manualSelectedType,
+        currentUser,
+        token
       );
 
       // 🔹 Obtener puntos desde backend
-      const data = await reportService.getUserPoints(1);
+      const data = await reportService.getUserPoints(currentUser.id);
 
             // Último reporte
       const lastReport = data?.history?.[data.history.length - 1];
