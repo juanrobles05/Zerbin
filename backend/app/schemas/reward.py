@@ -6,6 +6,7 @@ class RewardBase(BaseModel):
     name: str
     description: str
     points_required: int
+    image_url: Optional[str] = None
 
 class RewardCreate(RewardBase):
     pass
