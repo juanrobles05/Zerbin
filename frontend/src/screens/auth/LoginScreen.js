@@ -67,10 +67,11 @@ export default function LoginScreen({ navigation }) {
           {
             text: 'Continuar',
             onPress: () => {
-              // Navegar al Home o Dashboard
+              // Si es admin, navegar al panel de admin, si no, a Home
+              const targetScreen = response.user.role === 'admin' ? 'Admin' : 'Home';
               navigation.reset({
                 index: 0,
-                routes: [{ name: 'Home' }],
+                routes: [{ name: targetScreen }],
               });
             },
           },

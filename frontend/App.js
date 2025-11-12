@@ -17,6 +17,7 @@ import { LocationSelectorScreen } from './src/screens/location/LocationSelectorS
 import { RewardsScreen } from './src/screens/reward/RewardsScreen';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
+import { AdminScreen } from './src/screens/admin/AdminScreen';
 
 // Importar tema
 import { THEME } from './src/styles/theme';
@@ -58,7 +59,7 @@ export default function App() {
                 title: 'Registro',
               }}
             />
-            
+
             {/* Main App Screens */}
             <Stack.Screen
               name="Welcome"
@@ -121,6 +122,13 @@ export default function App() {
             options={{
               title: 'Seleccionar Ubicación',
               presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="Admin"
+            component={AdminScreen}
+            options={{
+              headerShown: false,
             }}
           />
         </Stack.Navigator>

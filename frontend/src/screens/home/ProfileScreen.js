@@ -95,7 +95,7 @@ export function ProfileScreen({ navigation }) {
             const pts = (resp && typeof resp === 'object' && 'points' in resp) ? resp.points : Number(resp) || 0;
             setPoints(pts);
             await AsyncStorage.setItem('user_points', String(pts));
-            
+
             // Actualizar el timestamp de última comprobación
             const now = Date.now().toString();
             await AsyncStorage.setItem('last_report_at', now);
@@ -218,11 +218,11 @@ export function ProfileScreen({ navigation }) {
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Miembro desde</Text>
               <Text style={styles.infoValue}>
-                {user?.created_at 
-                  ? new Date(user.created_at).toLocaleDateString('es-ES', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
+                {user?.created_at
+                  ? new Date(user.created_at).toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     })
                   : 'N/A'}
               </Text>
@@ -251,6 +251,17 @@ export function ProfileScreen({ navigation }) {
             </View>
           </View>
         </View>
+
+        {/* Botón de Panel de Administración (solo para admins) */}
+        {user?.role === 'admin' && (
+          <TouchableOpacity
+            style={styles.adminButton}
+            onPress={() => navigation.navigate('Admin')}
+          >
+            <FontAwesome5 name="user-shield" size={20} color="#FFD700" style={styles.buttonIcon} />
+            <Text style={styles.adminButtonText}>Panel de Administración</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Botón de cerrar sesión */}
         <TouchableOpacity
@@ -483,6 +494,24 @@ const styles = StyleSheet.create({
     color: '#B0BEC5',
     marginTop: 4,
   },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 12,
+    padding: 16,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    borderRadius: 8,
+  },
+  adminButtonText: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -499,5 +528,8 @@ const styles = StyleSheet.create({
     color: '#FF6347',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
 });
