@@ -6,7 +6,10 @@ const getApiUrl = () => {
   const debuggerHost = Constants.expoConfig?.hostUri;
   const localIP = debuggerHost ? debuggerHost.split(':')[0] : null;
 
-  if (__DEV__) {
+  // CAMBIAR A false PARA USAR PRODUCCIÓN
+  const USE_DEV_MODE = false;
+
+  if (__DEV__ && USE_DEV_MODE) {
     if (Platform.OS === 'android') {
       // Android Emulator -> usa 10.0.2.2
       // Android físico -> usa la IP local
@@ -23,7 +26,7 @@ const getApiUrl = () => {
   }
 
   // Producción
-  return 'https://api.zerbin.com/api';
+  return 'https://zerbin.up.railway.app/api';
 };
 
 export const API_CONFIG = {

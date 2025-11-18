@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Zerbin",
+    "slug": "zerbin",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/icon1.png",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-icon1.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
@@ -20,15 +20,19 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/icon1.png",
+        "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
         "CAMERA"
-      ]
+      ],
+      "package": "com.juanrobles05.zerbin"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,6 +40,17 @@
     "permissions": [
       "LOCATION",
       "CAMERA"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9028ae67-cdff-47bd-b9e9-f653d52670c9"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9028ae67-cdff-47bd-b9e9-f653d52670c9"
+    }
   }
 }
