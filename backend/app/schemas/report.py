@@ -37,6 +37,7 @@ class ReportResponse(ReportBase):
     created_at: datetime
     updated_at: Optional[datetime]
     resolved_at: Optional[datetime]
+    points_earned: Optional[int] = 0  # Puntos ganados por este reporte
 
     model_config = ConfigDict(from_attributes=True)
 

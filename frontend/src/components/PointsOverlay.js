@@ -2,9 +2,11 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
+import { useNavigation } from "@react-navigation/native";
 
 export const PointsOverlay = ({ visible, points, totalPoints, onClose }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const navigation = useNavigation();
 
   useEffect(() => {
     if (visible) {
@@ -18,6 +20,11 @@ export const PointsOverlay = ({ visible, points, totalPoints, onClose }) => {
 
   if (!visible) return null;
 
+  const handleGoToRewards = () => {
+    onClose(); // Cierra el overlay
+    navigation.navigate("Rewards"); // Va al catálogo
+  };
+
   return (
     <View style={styles.overlay}>
       <ConfettiCannon count={50} origin={{ x: 200, y: -10 }} fadeOut />
@@ -29,9 +36,16 @@ export const PointsOverlay = ({ visible, points, totalPoints, onClose }) => {
         <Text style={styles.totalText}>
           Total acumulado: <Text style={styles.pointsNumber}>{totalPoints}</Text> puntos
         </Text>
-        <TouchableOpacity style={styles.button} onPress={onClose}>
-          <Text style={styles.buttonText}>OK</Text>
-        </TouchableOpacity>
+
+        <View style={styles.buttonsContainer}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={onClose}>
+            <Text style={styles.buttonText}>OK</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.button} onPress={handleGoToRewards}>
+            <Text style={styles.buttonText}>Ver Catálogo</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   );
@@ -77,8 +91,18 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#10B981",
   },
+  buttonsContainer: {
+    flexDirection: "row",
+    gap: 12,
+  },
   button: {
     backgroundColor: "#10B981",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  secondaryButton: {
+    backgroundColor: "#6B7280",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -88,4 +112,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
-

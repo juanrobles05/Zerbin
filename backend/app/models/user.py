@@ -1,4 +1,3 @@
-# cambios en models/users.py
 from sqlalchemy import Column, Integer, String, DateTime, func
 from sqlalchemy.orm import relationship
 from .base import Base
@@ -12,9 +11,15 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # nuevo campo
+    # Campo de puntos para el sistema de recompensas
     points = Column(Integer, default=0, nullable=False)
 
-    # Relationships
-    reports = relationship("Report", back_populates="user")
-    # rewards = relationship("Reward", back_populates="user")
+    # Campo de rol para permisos de administrador
+    role = Column(String, default="user", nullable=False)  # "user" o "admin"
+
+    # Relaciones
+    reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
+    redemptions = relationship("RewardRedemption", back_populates="user", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, username={self.username}, points={self.points})>"

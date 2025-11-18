@@ -3,8 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
-
-// Importar AuthProvider
+import Toast from 'react-native-toast-message';
 import { AuthProvider } from './src/contexts/AuthContext';
 
 // Importar pantallas
@@ -15,8 +14,10 @@ import { ProfileScreen } from './src/screens/home/ProfileScreen';
 import { HistoryScreen } from './src/screens/history/HistoryScreen';
 import { ReportScreen } from './src/screens/reports/ReportScreen';
 import { LocationSelectorScreen } from './src/screens/location/LocationSelectorScreen';
+import { RewardsScreen } from './src/screens/reward/RewardsScreen';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
+import { AdminScreen } from './src/screens/admin/AdminScreen';
 
 // Importar tema
 import { THEME } from './src/styles/theme';
@@ -58,7 +59,7 @@ export default function App() {
                 title: 'Registro',
               }}
             />
-            
+
             {/* Main App Screens */}
             <Stack.Screen
               name="Welcome"
@@ -109,6 +110,13 @@ export default function App() {
             }}
           />
           <Stack.Screen
+            name="Rewards"
+            component={RewardsScreen}
+            options={{
+              title: 'Recompensas',
+            }}
+          />
+          <Stack.Screen
             name="LocationSelector"
             component={LocationSelectorScreen}
             options={{
@@ -116,8 +124,18 @@ export default function App() {
               presentation: 'modal',
             }}
           />
+          <Stack.Screen
+            name="Admin"
+            component={AdminScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
+
+      {/* Este componente debe estar fuera del NavigationContainer */}
+      <Toast />
     </SafeAreaProvider>
     </AuthProvider>
   );
