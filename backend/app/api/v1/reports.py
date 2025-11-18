@@ -26,6 +26,7 @@ async def create_report(
     image: UploadFile = File(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
+    address: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     ai_classification: Optional[str] = Form(None),
     manual_classification: Optional[str] = Form(None),
@@ -34,11 +35,11 @@ async def create_report(
 ):
     """
     Crear un nuevo reporte de residuo con imagen.
-    
+
     **Soporta reportes autenticados y anónimos:**
     - Si el usuario está autenticado (token JWT válido), se asocia el reporte con su cuenta y gana puntos
     - Si no hay token o es inválido, se crea un reporte anónimo (user_id = None)
-    
+
     **Pasos:**
     1. Sube la imagen a Supabase
     2. Clasifica la imagen con IA
@@ -79,9 +80,13 @@ async def create_report(
             # not a JSON payload, store raw string (trim whitespace)
             manual_result = str(manual_classification).strip()
 
+    if address is not None and str(address).strip() == "string":
+        address = f"Address for ({latitude}, {longitude})"
+
     report_data = type('ReportData', (), {})()
     report_data.latitude = latitude
     report_data.longitude = longitude
+    report_data.address = address
     report_data.description = description
     report_data.image_url = public_url
     report_data.ai_classification = ai_result
@@ -90,11 +95,11 @@ async def create_report(
     # Pasar user_id si el usuario está autenticado, None si es anónimo
     user_id = current_user.id if current_user else None
     created_report = await ReportService.create_report(
-        db=db, 
+        db=db,
         report_data=report_data,
         user_id=user_id
     )
-    
+
     return created_report
 
 

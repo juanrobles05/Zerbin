@@ -24,7 +24,7 @@ class Report(Base):
 
     # Usuario (opcional para reportes anónimos)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    user = relationship("User", back_populates="reports")
+    user = relationship("User", back_populates="reports")  # 🔹 usar string
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

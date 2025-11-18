@@ -1,10 +1,14 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../../styles/theme';
 import { FontAwesome5, MaterialIcons, Feather } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { reportService } from '../../services/api/reportService';
 
 // Componente para los botones principales
 const MainButton = ({ iconName, text, subtext, onPress }) => (
@@ -28,15 +32,15 @@ const ActivitySummary = ({ reports, resolved, pending }) => (
     <Text style={styles.cardTitle}>Resumen de Actividad</Text>
     <View style={styles.summaryContainer}>
       <View style={styles.summaryItem}>
-        <Text style={[styles.summaryNumber, { color: THEME.colors.primary }]}>{reports}</Text>
+        <Text style={[styles.summaryNumber, { color: '#10b981' }]}>{reports}</Text>
         <Text style={styles.summaryLabel}>Reportes</Text>
       </View>
       <View style={styles.summaryItem}>
-        <Text style={[styles.summaryNumber, { color: THEME.colors.success }]}>{resolved}</Text>
+        <Text style={[styles.summaryNumber, { color: '#22c55e' }]}>{resolved}</Text>
         <Text style={styles.summaryLabel}>Resueltos</Text>
       </View>
       <View style={styles.summaryItem}>
-        <Text style={[styles.summaryNumber, { color: THEME.colors.danger }]}>{pending}</Text>
+        <Text style={[styles.summaryNumber, { color: '#eab308' }]}>{pending}</Text>
         <Text style={styles.summaryLabel}>Pendientes</Text>
       </View>
     </View>
@@ -44,22 +48,152 @@ const ActivitySummary = ({ reports, resolved, pending }) => (
 );
 
 // Componente para un reporte reciente
-const RecentReport = ({ status }) => (
-  <View style={styles.reportItem}>
-    <View style={styles.reportIcon} />
-    <View style={styles.reportInfo}>
-      <Text style={styles.reportTitle}>Basura urbana</Text>
-      <Text style={styles.reportLocation}>Cra 80 #45-3</Text>
+const RecentReport = ({ report }) => {
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'resuelto':
+      case 'resolved':
+        return '#22c55e';
+      case 'en_proceso':
+      case 'in_progress':
+        return '#3b82f6';
+      case 'pendiente':
+      case 'pending':
+      default:
+        return '#eab308';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'resuelto':
+      case 'resolved':
+        return 'Resuelto';
+      case 'en_proceso':
+      case 'in_progress':
+        return 'En Proceso';
+      case 'pendiente':
+      case 'pending':
+      default:
+        return 'Pendiente';
+    }
+  };
+
+  return (
+    <View style={styles.reportItem}>
+      {report?.image_url ? (
+        <Image
+          source={{ uri: report.image_url }}
+          style={styles.reportImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.reportIcon}>
+          <FontAwesome5 name="trash" size={20} color="#FFFFFF" />
+        </View>
+      )}
+      <View style={styles.reportInfo}>
+        <Text style={styles.reportTitle}>
+          {report?.classification?.waste_type || report?.manual_classification || 'Reporte de residuo'}
+        </Text>
+        <Text style={styles.reportLocation}>
+          {report?.description || 'Sin descripción'}
+        </Text>
+      </View>
+      <View style={[styles.statusTag, { backgroundColor: getStatusColor(report?.status) }]}>
+        <Text style={styles.statusText}>{getStatusText(report?.status)}</Text>
+      </View>
     </View>
-    <View style={[styles.statusTag, { backgroundColor: THEME.colors[status.toLowerCase()] }]}>
-      <Text style={styles.statusText}>{status}</Text>
-    </View>
-  </View>
-);
+  );
+};
 
 // Componente principal de la pantalla
 export function HomeScreen({ navigation }) {
   const { user, isAuthenticated, logout } = useAuth();
+  const [points, setPoints] = useState(0);
+  const [userReports, setUserReports] = useState([]);
+  const [stats, setStats] = useState({ total: 0, resolved: 0, pending: 0 });
+
+  // Cargar puntos del usuario - se ejecuta cada vez que la pantalla obtiene el foco
+  useFocusEffect(
+    useCallback(() => {
+      const loadPoints = async () => {
+        try {
+          if (!user?.id) {
+            const cached = await AsyncStorage.getItem('user_points');
+            if (cached != null) setPoints(Number(cached) || 0);
+            return;
+          }
+
+          // Siempre intentar cargar desde la API cuando la pantalla obtiene el foco
+          try {
+            const resp = await reportService.getUserPoints(user.id);
+            const pts = (resp && typeof resp === 'object' && 'points' in resp) ? resp.points : Number(resp) || 0;
+            setPoints(pts);
+            await AsyncStorage.setItem('user_points', String(pts));
+            
+            // Actualizar el timestamp de última comprobación
+            const now = Date.now().toString();
+            await AsyncStorage.setItem('last_report_at', now);
+            await AsyncStorage.setItem('home_last_checked_report_at', now);
+          } catch (err) {
+            console.warn('Failed to fetch points:', err?.message || err);
+            // Si falla, usar caché como fallback
+            const cachedPoints = await AsyncStorage.getItem('user_points');
+            if (cachedPoints != null) {
+              setPoints(Number(cachedPoints) || 0);
+            }
+          }
+        } catch (err) {
+          console.warn('loadPoints error:', err?.message || err);
+        }
+      };
+
+      loadPoints();
+    }, [user?.id])
+  );
+
+  // Cargar reportes del usuario
+  useEffect(() => {
+    let mounted = true;
+
+    const loadReports = async () => {
+      try {
+        if (!user?.id || !isAuthenticated) {
+          setUserReports([]);
+          setStats({ total: 0, resolved: 0, pending: 0 });
+          return;
+        }
+
+        const response = await reportService.getUserReports(user.id, null, 1, 10);
+
+        // La respuesta puede ser un array directamente o un objeto con una propiedad 'reports' o 'data'
+        const reportsArray = Array.isArray(response)
+          ? response
+          : (response?.reports || response?.data || []);
+
+        if (mounted && reportsArray) {
+          setUserReports(reportsArray);
+
+          // Calcular estadísticas
+          const total = reportsArray.length;
+          const resolved = reportsArray.filter(r =>
+            r.status?.toLowerCase() === 'resuelto' || r.status?.toLowerCase() === 'resolved'
+          ).length;
+          const pending = reportsArray.filter(r =>
+            r.status?.toLowerCase() === 'pendiente' || r.status?.toLowerCase() === 'pending'
+          ).length;
+
+          setStats({ total, resolved, pending });
+        }
+      } catch (err) {
+        console.warn('Error loading reports:', err?.message || err);
+      }
+    };
+
+    loadReports();
+    return () => { mounted = false; };
+  }, [user?.id, isAuthenticated]);
 
   const handleLogout = () => {
     if (!isAuthenticated) {
@@ -111,7 +245,7 @@ export function HomeScreen({ navigation }) {
             {isAuthenticated && (
               <View style={styles.pointsBadge}>
                 <FontAwesome5 name="star" size={14} color="#FFD700" />
-                <Text style={styles.pointsText}>{user?.points || 0}</Text>
+                <Text style={styles.pointsText}>{points}</Text>
               </View>
             )}
           </View>
@@ -140,11 +274,51 @@ export function HomeScreen({ navigation }) {
           />
         </View>
 
-        <ActivitySummary reports={12} resolved={8} pending={4} />
+        {/* Tarjeta de Recompensas */}
+        {isAuthenticated && (
+          <TouchableOpacity 
+            style={styles.rewardsCard}
+            onPress={() => navigation.navigate('Rewards')}
+          >
+            <LinearGradient
+              colors={["#f59e0b", "#d97706", "#b45309"]}
+              style={styles.rewardsGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.rewardsContent}>
+                <View style={styles.rewardsIconContainer}>
+                  <FontAwesome5 name="gift" size={32} color="#FFFFFF" />
+                </View>
+                <View style={styles.rewardsTextContainer}>
+                  <Text style={styles.rewardsTitle}>Tienda de Recompensas</Text>
+                  <Text style={styles.rewardsSubtitle}>
+                    Canjea tus {points} puntos por premios
+                  </Text>
+                </View>
+                <FontAwesome5 name="chevron-right" size={20} color="#FFFFFF" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        <ActivitySummary
+          reports={stats.total}
+          resolved={stats.resolved}
+          pending={stats.pending}
+        />
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Acceso Rápido</Text>
           <View>
+            <TouchableOpacity 
+              style={styles.quickAccessItem}
+              onPress={() => navigation.navigate('Rewards')}
+            >
+              <FontAwesome5 name="gift" size={20} color="#FFD700" style={styles.quickAccessIcon} />
+              <Text style={styles.quickAccessText}>Tienda de Recompensas</Text>
+              <MaterialIcons name="keyboard-arrow-right" size={24} color={THEME.colors.textPrimary} />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.quickAccessItem}>
               <Feather name="bar-chart-2" size={20} color={THEME.colors.textPrimary} style={styles.quickAccessIcon} />
               <Text style={styles.quickAccessText}>Estadísticas de la ciudad</Text>
@@ -160,8 +334,20 @@ export function HomeScreen({ navigation }) {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Reportes recientes</Text>
-          <RecentReport status="Pendiente" />
-          <RecentReport status="Pendiente" />
+          {isAuthenticated && userReports.length > 0 ? (
+            userReports.slice(0, 2).map((report, index) => (
+              <RecentReport key={report.id || index} report={report} />
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <FontAwesome5 name="inbox" size={40} color="#B0BEC5" />
+              <Text style={styles.emptyStateText}>
+                {isAuthenticated
+                  ? 'No tienes reportes recientes'
+                  : 'Inicia sesión para ver tus reportes'}
+              </Text>
+            </View>
+          )}
         </View>
 
       </ScrollView>
@@ -251,6 +437,43 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
   },
+  rewardsCard: {
+    marginBottom: 20,
+    borderRadius: 15,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  rewardsGradient: {
+    borderRadius: 15,
+    padding: 20,
+  },
+  rewardsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rewardsIconContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 50,
+    padding: 12,
+    marginRight: 15,
+  },
+  rewardsTextContainer: {
+    flex: 1,
+  },
+  rewardsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  rewardsSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
   card: {
     backgroundColor: THEME.colors.card,
     borderRadius: 15,
@@ -304,9 +527,18 @@ const styles = StyleSheet.create({
   reportIcon: {
     width: 50,
     height: 50,
-    backgroundColor: THEME.colors.textSecondary,
+    backgroundColor: '#607D8B',
     borderRadius: 10,
     marginRight: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reportImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    marginRight: 15,
+    backgroundColor: '#607D8B',
   },
   reportInfo: {
     flex: 1,
@@ -329,5 +561,16 @@ const styles = StyleSheet.create({
     color: THEME.colors.white,
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+  },
+  emptyStateText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
   },
 });

@@ -24,6 +24,7 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     id: int
     created_at: datetime
+    role: Optional[str] = "user"  # Incluir rol en la respuesta
 
     class Config:
         from_attributes = True

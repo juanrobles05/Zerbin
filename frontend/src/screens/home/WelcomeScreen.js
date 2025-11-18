@@ -23,15 +23,16 @@ const FeatureItem = ({ icon, text, subtext }) => (
 );
 
 export function WelcomeScreen({ navigation }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   // Verificar si el usuario ya está autenticado al cargar la pantalla
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      // Si ya está autenticado, navegar directamente al Home
-      navigation.replace('Home');
+      // Si ya está autenticado, navegar según su rol
+      const targetScreen = user?.role === 'admin' ? 'Admin' : 'Home';
+      navigation.replace(targetScreen);
     }
-  }, [isAuthenticated, isLoading, navigation]);
+  }, [isAuthenticated, isLoading, user, navigation]);
 
   const handleStartPress = () => {
     // Navegar a Login para que el usuario se autentique o continúe sin cuenta

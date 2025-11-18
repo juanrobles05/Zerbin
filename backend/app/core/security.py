@@ -30,11 +30,11 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
     Crea un JWT access token.
-    
+
     Args:
         data: Diccionario con los datos a encodear (ej: {"sub": user_id})
         expires_delta: Tiempo de expiración opcional
-        
+
     Returns:
         Token JWT como string
     """
@@ -43,7 +43,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
@@ -52,10 +52,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 def decode_access_token(token: str) -> Optional[dict]:
     """
     Decodifica un JWT token.
-    
+
     Args:
         token: Token JWT a decodificar
-        
+
     Returns:
         Payload del token o None si es inválido
     """
@@ -72,14 +72,14 @@ async def get_current_user(
 ) -> User:
     """
     Dependency para obtener el usuario actual desde el token JWT.
-    
+
     Args:
         token: Token JWT del header Authorization
         db: Sesión de base de datos
-        
+
     Returns:
         Usuario autenticado
-        
+
     Raises:
         HTTPException: Si el token es inválido o el usuario no existe
     """
@@ -88,19 +88,19 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     payload = decode_access_token(token)
     if payload is None:
         raise credentials_exception
-    
+
     user_id: str = payload.get("sub")
     if user_id is None:
         raise credentials_exception
-    
+
     user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None:
         raise credentials_exception
-    
+
     return user
 
 
@@ -111,14 +111,38 @@ async def get_current_user_optional(
     """
     Dependency para obtener el usuario actual de forma opcional.
     Permite endpoints que funcionen con o sin autenticación.
-    
+
     Returns:
         Usuario autenticado o None si no hay token
     """
     if token is None:
         return None
-    
+
     try:
         return await get_current_user(token, db)
     except HTTPException:
         return None
+
+
+async def get_current_admin_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """
+    Dependency para verificar que el usuario actual es un administrador.
+
+    Args:
+        current_user: Usuario autenticado actual
+
+    Returns:
+        Usuario admin autenticado
+
+    Raises:
+        HTTPException: Si el usuario no tiene rol de admin
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this resource. Admin role required."
+        )
+
+    return current_user

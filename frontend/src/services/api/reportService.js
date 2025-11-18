@@ -92,7 +92,7 @@ export const priorityService = {
 
 export const reportService = {
   // Create report by sending image file + fields as multipart/form-data
-  createReport: async (imageUri, location, description, classification, manualClassification, currentUser, token) => {
+  createReport: async (imageUri, location, description, classification, manualClassification, currentUser, token, address = null) => {
     try {
       const formData = new FormData();
       formData.append('image', buildFile(imageUri));
@@ -119,6 +119,9 @@ export const reportService = {
       }
 
       if (description) formData.append('description', description);
+
+      // Agregar dirección si está disponible
+      if (address) formData.append('address', address);
 
       const response = await postWithRetry(
         API_CONFIG.ENDPOINTS.REPORTS,
