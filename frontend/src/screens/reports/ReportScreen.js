@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -139,12 +139,13 @@ export function ReportScreen({ navigation, route }) {
         classification,
         manualSelectedType,
         currentUser,
-        token
+        token,
+        locationAddress
       );
 
       // 🔹 Obtener puntos ganados de la respuesta del reporte
       const pointsThisReport = reportResponse?.points_earned || 0;
-      
+
       // 🔹 Obtener puntos totales actualizados del usuario
       const pointsData = await reportService.getUserPoints(currentUser.id);
       const totalUserPoints = pointsData?.points || 0;
@@ -167,7 +168,18 @@ export function ReportScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          enableOnAndroid={true}
+        >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerSubtitle}>Completa los detalles del residuo</Text>
@@ -307,10 +319,12 @@ export function ReportScreen({ navigation, route }) {
           <TextInput
             style={styles.textInput}
             placeholder="Agrega una descripción..."
-            placeholderTextColor="THEME.colors.textSecondary"
+            placeholderTextColor={THEME.colors.textSecondary}
             value={description}
             onChangeText={setDescription}
             numberOfLines={6}
+            multiline={true}
+            textAlignVertical="top"
           />
         </View>
       </ScrollView>
@@ -351,6 +365,7 @@ export function ReportScreen({ navigation, route }) {
           navigation.navigate("Home");
         }}
       />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -361,8 +376,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#374151",
   },
+  keyboardView: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
 
 // Header

@@ -5,10 +5,6 @@ from app.services.priority_service import PriorityService
 
 logger = logging.getLogger(__name__)
 
-# Dummy implementation of get_address_from_coords
-def get_address_from_coords(latitude, longitude):
-    return f"Address for ({latitude}, {longitude})"
-
 # Mapa de puntos
 POINTS_BY_WASTE_TYPE = {
     "plastic": 10,
@@ -51,7 +47,7 @@ class ReportService:
             longitude=report_data.longitude,
             description=report_data.description,
             image_url=report_data.image_url,
-            address=get_address_from_coords(report_data.latitude, report_data.longitude),
+            address=report_data.address,
             waste_type=waste_type,
             manual_classification=report_data.manual_classification,
             confidence_score=confidence_score,

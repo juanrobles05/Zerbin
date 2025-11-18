@@ -108,17 +108,23 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Iniciar Sesión</Text>
-          <Text style={styles.subtitle}>
-            Accede a tu cuenta para ver tus reportes y recompensas
-          </Text>
-        </View>
+    <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>Iniciar Sesión</Text>
+            <Text style={styles.subtitle}>
+              Accede a tu cuenta para ver tus reportes y recompensas
+            </Text>
+          </View>
 
         <View style={styles.form}>
           {/* Email */}
@@ -188,7 +194,8 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -196,6 +203,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#3A4750', // Fondo oscuro de la app
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
